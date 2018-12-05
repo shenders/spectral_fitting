@@ -2,7 +2,6 @@ FUNCTION cal_wav,x,y,shot,diag,spec
 
 
 	    nist_vac = [373.791,375.574,376.094,379.234,388.909,397.01,399.613,404.245,410.174]
-	    ;nist_vac = [369.52,383.54,388.90,397.011,399.613,410.177]
 	    nist_air = nist_vac-0.113
 	    id = where(nist_air ge min(x) and nist_air le max(x))
 	    nist_air=nist_air[id] 
@@ -24,9 +23,7 @@ FUNCTION cal_wav,x,y,shot,diag,spec
 	    print,nist_air
 	    print,xmax
 	    plot,x,wcal
-    	    	if spec eq 'kt3a' then wcal_file='Save/wcal_kt3a'+DIAG+STRING(shot,format='(I5)')+'.sav' else $
-		                       wcal_file='Save/wcal'+DIAG+STRING(shot,format='(I5)')+'.sav'
-;	    wcal_file='Save/wcal'+DIAG+STRING(shot,format='(I5)')+'.sav'
+	    wcal_file='Save/wcal'+DIAG+STRING(shot,format='(I5)')+'.sav'
 	    save,file=wcal_file,wcal
 	    STOP
 return,wcal
