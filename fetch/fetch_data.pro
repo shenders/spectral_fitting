@@ -32,13 +32,14 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 	    calwave=STRING(shot,FORMAT='(I5)')
 	ENDIF    
 
+	shotstr = string(shot,format='(I5)')
+
 ;	**********************************
 ;	**** Read data ****
 ;	**********************************
+
 	data = get_data(shot,machine,diag=diag)
-	
-	
-	
+		
 ;	**********************************
 ;	**** Setup spectral line fitting *
 ;	**********************************
@@ -123,7 +124,7 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 ;	**********************************
 ;	**** Calibrate wavelength     ****
 ;	**********************************
-		wcal_file='Save/wcal'+DIAG+STRING(shot,format='(I5)')+'.sav'
+		wcal_file='tmp/wcal'+DIAG+shotstr+'.sav'
 	        IF FILE_TEST(wcal_file)THEN BEGIN
 	            RESTORE,wcal_file,/verb 
 	            PRINT,'Restored wavelength calibration file'

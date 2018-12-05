@@ -41,7 +41,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 ;	************************************
 ;	**** Setup MDL file             ****
 ;	************************************
-	GET_LUN,unit_write & IF KEYWORD_SET(mdlfile)THEN mdl_file=mdlfile ELSE mdl_file = 'default_model.mdl'
+	GET_LUN,unit_write & IF KEYWORD_SET(mdlfile)THEN mdl_file=mdlfile ELSE mdl_file = 'tmp/default_model.mdl'
 	IF KEYWORD_SET(nowrite)THEN OPENW,unit_write,'temp.mdl' ELSE OPENW,unit_write,mdl_file
     	junk= ''
     	PRINTF,unit_write,'(model'

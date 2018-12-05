@@ -23,7 +23,7 @@ FUNCTION cal_wav,x,y,shot,diag,spec
 	    print,nist_air
 	    print,xmax
 	    plot,x,wcal
-	    wcal_file='Save/wcal'+DIAG+STRING(shot,format='(I5)')+'.sav'
+	    wcal_file='tmp/wcal'+DIAG+STRING(shot,format='(I5)')+'.sav'
 	    save,file=wcal_file,wcal
 	    STOP
 return,wcal
