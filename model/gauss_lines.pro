@@ -1,4 +1,4 @@
-Function gauss_lines,species=species,instr_func=instr_func,diag=diag
+Function gauss_lines,species=species,instr_func=instr_func,diag=diag,unknown=unknown
 
 if ~keyword_set(instr_func)then instr_func=0.08
 if ~keyword_set(diag)then diag='EVS'
@@ -106,6 +106,13 @@ if id[0] ne -1 then begin
     ion = [ion,W_ions]
     trn = [trn,W_trn]
     cpl = [cpl,W_cpl]
+endif
+
+if keyword_set(unknown) then begin
+    pos = [pos,X_lines]
+    ion = [ion,X_ions]
+    trn = [trn,X_trn]
+    cpl = [cpl,X_cpl]
 endif
 
 if n_elements(pos) > 1 then begin

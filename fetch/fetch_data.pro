@@ -44,7 +44,7 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 ;	**** Setup spectral line fitting *
 ;	**********************************
 
-    	gauss = gauss_lines(species=['He','C','O','N','W'],instr_func=data.instr_func,diag=diag)
+    	gauss = gauss_lines(species=['He','C','O','N','W'],instr_func=data.instr_func,diag=diag,/unknown)
 	voigt = voigt_lines(species=['D'],instr_func=data.instr_func,diag=diag)
 	
 ;	**********************************
