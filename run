@@ -1,0 +1,6 @@
+# /bin/bash
+
+IDL_STARTUP="tools/idl_startup.pro"
+export IDL_STARTUP
+idl 
+echo 'Exiting spectral fitting environment ...'
