@@ -26,7 +26,7 @@
 adas_fit)
 (setval backg.m 0.0000)
 (fixed backg.m)
-(setval backg.c 0.0047741)
+(setval backg.c 0.0047733)
 (fixed backg.c)
 (dummy d)
 (setval d.dens 3.0e20)

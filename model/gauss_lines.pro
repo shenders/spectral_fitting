@@ -70,6 +70,9 @@ if id[0] ne -1 then begin
     pos = [pos,He_lines]
     ion = [ion,He_ions]
     trn = [trn,He_trn]
+    max_cpl = max(cpl)
+    id = where(He_cpl > 0)
+    if id[0] ne -1 then He_cpl[id] = He_cpl[id] + max_cpl
     cpl = [cpl,He_cpl]
 endif
 id = where(species eq 'C')
@@ -77,6 +80,9 @@ if id[0] ne -1 then begin
     pos = [pos,C_lines]
     ion = [ion,C_ions]
     trn = [trn,C_trn]
+    max_cpl = max(cpl)
+    id = where(C_cpl > 0)
+    if id[0] ne -1 then C_cpl[id] = C_cpl[id] + max_cpl
     cpl = [cpl,C_cpl]
 endif
 id = where(species eq 'N')
@@ -84,6 +90,9 @@ if id[0] ne -1 then begin
     pos = [pos,N_lines]
     ion = [ion,N_ions]
     trn = [trn,N_trn]
+    max_cpl = max(cpl)
+    id = where(N_cpl > 0)
+    if id[0] ne -1 then N_cpl[id] = N_cpl[id] + max_cpl
     cpl = [cpl,N_cpl]
 endif
 id = where(species eq 'O')
@@ -91,6 +100,9 @@ if id[0] ne -1 then begin
     pos = [pos,O_lines]
     ion = [ion,O_ions]
     trn = [trn,O_trn]
+    max_cpl = max(cpl)
+    id = where(O_cpl > 0)
+    if id[0] ne -1 then O_cpl[id] = O_cpl[id] + max_cpl
     cpl = [cpl,O_cpl]
 endif
 id = where(species eq 'Ne')
@@ -98,6 +110,9 @@ if id[0] ne -1 then begin
     pos = [pos,Ne_lines]
     ion = [ion,Ne_ions]
     trn = [trn,Ne_trn]
+    max_cpl = max(cpl)
+    id = where(Ne_cpl > 0)
+    if id[0] ne -1 then Ne_cpl[id] = Ne_cpl[id] + max_cpl
     cpl = [cpl,Ne_cpl]
 endif
 id = where(species eq 'W')
@@ -105,6 +120,9 @@ if id[0] ne -1 then begin
     pos = [pos,W_lines]
     ion = [ion,W_ions]
     trn = [trn,W_trn]
+    max_cpl = max(cpl)
+    id = where(W_cpl > 0)
+    if id[0] ne -1 then W_cpl[id] = W_cpl[id] + max_cpl
     cpl = [cpl,W_cpl]
 endif
 
@@ -112,6 +130,9 @@ if keyword_set(unknown) then begin
     pos = [pos,X_lines]
     ion = [ion,X_ions]
     trn = [trn,X_trn]
+    max_cpl = max(cpl)
+    id = where(X_cpl > 0)
+    if id[0] ne -1 then X_cpl[id] = X_cpl[id] + max_cpl
     cpl = [cpl,X_cpl]
 endif
 
