@@ -1,74 +1,82 @@
 Function get_data,shot,machine,diag=diag
 
 IF machine eq 'AUG' THEN BEGIN
+    !path = expand_path('+/afs/ipp/u/mcavedon/VS/lib:')+':'+!path
     IF ~KEYWORD_SET(diag)THEN diag       = 'EVS'
     IF ~KEYWORD_SET(wshift)THEN wshift   = 0.0
     shotstr = STRING(shot,FORMAT='(I5)')
-    IF shot lt 33725 THEN BEGIN
-	read_spec,shot,diag,data 
-	red_emiss  = data.phflx
-	red_wavel  = data.lamgrid
-	red_los    = data.losnames
-	red_time   = data.time
-	red_wavel  = (red_wavel+wshift)
-	red_error  = data.sy
-	instr_func = data.FWHM_NM
-	red_time   = red_time[0:N_ELEMENTS(red_emiss(0,0,*))-1]
-	if keyword_set(interelm)then begin
-		telm       = find_elm(shot,red_time,red_emiss(*,0,0))
-		if ~keyword_set(elmcond)then elmcond=5
-		idback     = where(telm ge elmcond)
-		if idback[0] ne -1 then begin
-			red_time   = red_time[idback]
-			red_emiss  = red_emiss[*,*,idback]
-			red_error  = red_error[*,*,idback]
+	IF shot lt 33725 THEN BEGIN
+		read_spec,shot,diag,data 
+		red_emiss  = data.phflx
+		red_wavel  = data.lamgrid
+		red_los    = data.losnames
+		red_time   = data.time
+		red_wavel  = (red_wavel+wshift)
+		red_error  = data.sy
+		instr_func = data.FWHM_NM
+		red_time   = red_time[0:N_ELEMENTS(red_emiss(0,0,*))-1]
+		PRINT,'Time resolution: ',red_time(1)-red_time(0)
+		IF ~KEYWORD_SET(resolution) THEN resolution   = 0.0001
+		act_resol    = red_time(1)-red_time(0)
+
+		if keyword_set(interelm)then begin
+			telm       = find_elm(shot,red_time,red_emiss(*,0,0))
+			if ~keyword_set(elmcond)then elmcond=4.5
+			idback     = where(telm ge elmcond)
+			if idback[0] ne -1 then begin
+				red_time   = red_time[idback]
+				red_emiss  = red_emiss[*,*,idback]
+				red_error  = red_error[*,*,idback]
+			endif
 		endif
-	endif
-    ENDIF ELSE BEGIN
-	read_xvs_diag,shot, diag, $
-            dwdp, exptime, sad2, ctsph, $
-            time, lam, offset, sens, spec, $
-            wlen, wslit, gratcons, op_ang, pixw,$
-            magnification, fwhm_pix, $
-            neon_done, neon, lambda_neon, $
-            r1,phi1,z1, r2,phi2,z2, $
-            error=error, $
-            los_name= los_name, $
-            dat = dat, $ 
-	    exp_name = exp_name,$
-            no_copy=no_copy, $
-            no_smear_cor = no_smear_cor, $
-            read_again = read_again, $
-            keep_file = keep_file
-	
-	red_emiss  = spec
-	IF diag NE 'DVS' THEN BEGIN
-		red_emiss  = TRANSPOSE(red_emiss,[0,2,1])
-		FOR i=0,n_elements(time)-1 DO $
-	   		red_emiss[*,*,i] = red_emiss[*,*,i] / sens[*,*] / exptime / dwdp 
 	ENDIF ELSE BEGIN
-		FOR i=0,n_elements(time)-1 DO $
-	   		red_emiss[*,i] = red_emiss[*,i] / sens[*] / exptime / dwdp 
-	ENDELSE		 		
-	red_wavel  = lam
-	red_los    = los_name
-	red_time   = time
-	red_wavel  = (red_wavel+wshift)
-	red_error  = red_emiss * 0.1
-	IF diag EQ 'FVS' THEN instr_func = 0.08 ELSE instr_func=0.1
-	IF diag EQ 'DVS' THEN instr_func = 0.16
-	if keyword_set(interelm)then begin
-		telm       = find_elm(shot,red_time,red_emiss(*,0,0))
-		if ~keyword_set(elmcond)then elmcond=5
-		idback     = where(telm ge elmcond)
-		if idback[0] ne -1 then begin
-			red_time   = red_time[idback]
-			red_emiss  = red_emiss[*,*,idback]
-			red_error  = red_error[*,*,idback]
+		read_xvs_diag,shot, diag, $
+                    dwdp, exptime, sad2, ctsph, $
+                    time, lam, offset, sens, spec, $
+                    wlen, wslit, gratcons, op_ang, pixw,$
+                    magnification, fwhm_pix, $
+                    neon_done, neon, lambda_neon, $
+                    r1,phi1,z1, r2,phi2,z2, $
+                    error=error, $
+                    los_name= los_name, $
+                    dat = dat, $ 
+		    exp_name = exp_name,$
+                    no_copy=no_copy, $
+                    no_smear_cor = no_smear_cor, $
+                    read_again = read_again
+		
+		red_emiss  = spec
+		IF diag NE 'DVS' THEN BEGIN
+			red_emiss  = TRANSPOSE(red_emiss,[0,2,1])
+			FOR i=0,n_elements(time)-1 DO $
+		   		red_emiss[*,*,i] = red_emiss[*,*,i] / sens[*,*] / exptime / dwdp 
+		ENDIF ELSE BEGIN
+			FOR i=0,n_elements(time)-1 DO $
+		   		red_emiss[*,i] = red_emiss[*,i] / sens[*] / exptime / dwdp 
+		ENDELSE		 		
+		red_wavel  = lam
+		red_los    = los_name
+		red_time   = time
+		red_wavel  = (red_wavel+wshift)
+		red_error  = red_emiss * 0.1
+		IF diag EQ 'FVS' THEN instr_func = 0.08 ELSE instr_func=0.08
+		IF diag EQ 'DVS' THEN instr_func = 0.16
+		PRINT,'Time resolution: ',red_time(1)-red_time(0)
+		IF ~KEYWORD_SET(resolution) THEN resolution   = 0.0001
+		act_resol    = red_time(1)-red_time(0)
+		if keyword_set(interelm)then begin
+			telm       = find_elm(shot,red_time,red_emiss(*,0,0))
+			if ~keyword_set(elmcond)then elmcond=5
+			idback     = where(telm ge elmcond)
+			if idback[0] ne -1 then begin
+				red_time   = red_time[idback]
+				red_emiss  = red_emiss[*,*,idback]
+				red_error  = red_error[*,*,idback]
+			endif
 		endif
-	endif
-    ENDELSE	
-    IF diag EQ 'HVS' THEN instr_func=0.33
+	ENDELSE	
+
+	IF diag EQ 'HVS' THEN instr_func=0.1;instr_func=0.3
 
 ENDIF
 IF machine EQ 'JET'THEN BEGIN

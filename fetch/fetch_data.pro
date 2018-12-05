@@ -16,7 +16,6 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 			  elmcond=elmcond,$
 			  machine=machine,$
 			  rrange=rrange,$
-			  jet_coord=jet_coord,$
 			  fitall=fitall,$
 			  kt3a=kt3a,neon=neon,$
 			  spec=spec,use_bart=use_bart
@@ -51,25 +50,23 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 ;	**** Analyse time resolution  ****
 ;	**********************************
 
-	FOR i=0,N_ELEMENTS(red_los)-1 DO PRINT,STRING(i,FORMAT='("LOS(",i2,"):")')+red_los(i)
+	FOR i=0,N_ELEMENTS(data.los)-1 DO PRINT,STRING(i,FORMAT='("LOS(",i2,"):")')+data.los(i)
 	PRINT,'Time resolution: ',data.time(1)-data.time(0)
 
 ;	**********************************
 ;	**** Pick and sort the sightlines*
 ;	**********************************
 
-	id_sig   = WHERE(STRPOS(red_los,sig) NE -1)	
-	IF keyword_set(rrange) and machine eq 'JET' then id_sig=where(jet_coord ge rrange[0] and jet_coord le rrange[1])
-    	jet_coord = jet_coord[id_sig]
+	id_sig   = WHERE(STRPOS(data.los,sig) NE -1)	
 	nsig      = N_ELEMENTS(id_sig)
 	arr       = 0
 	IF machine EQ 'AUG' THEN BEGIN
-	    FOR i=0,nsig-1 DO arr=[arr,LONG(STRMID(red_los(id_sig[i]),4,2))] & arr = arr[1:*]
+	    FOR i=0,nsig-1 DO arr=[arr,LONG(STRMID(data.los(id_sig[i]),4,2))] & arr = arr[1:*]
 	ENDIF ELSE BEGIN
-	    FOR i=0,nsig-1 DO arr=[arr,LONG(STRMID(red_los(id_sig[i]),2,2))] & arr = arr[1:*]
+	    FOR i=0,nsig-1 DO arr=[arr,LONG(STRMID(data.los(id_sig[i]),2,2))] & arr = arr[1:*]
 	ENDELSE
 	PRINT,'Using sightlines: '
-	FOR i=0,nsig-1 DO print,red_los(id_sig[i])
+	FOR i=0,nsig-1 DO print,data.los(id_sig[i])
 	srt    = SORT(arr) & id_sig = id_sig[srt] & arr = arr[srt]
 	!P.CHARSIZE=2.0
 	IF id_sig[0] NE -1 THEN BEGIN 
@@ -126,14 +123,11 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 ;	**********************************
 ;	**** Calibrate wavelength     ****
 ;	**********************************
-    	    	if spec eq 'kt3a' then wcal_file='Save/wcal_kt3a'+DIAG+STRING(shot,format='(I5)')+'.sav' else $
-		                       wcal_file='Save/wcal'+DIAG+STRING(shot,format='(I5)')+'.sav'
-	        
-		IF FILE_TEST(wcal_file)THEN BEGIN
+		wcal_file='Save/wcal'+DIAG+STRING(shot,format='(I5)')+'.sav'
+	        IF FILE_TEST(wcal_file)THEN BEGIN
 	            RESTORE,wcal_file,/verb 
 	            PRINT,'Restored wavelength calibration file'
 	        ENDIF ELSE wcal=0.0
-
 		IF KEYWORD_SET(calwave)THEN wcal=0.0
 
 		FOR i=0,nsig-1 DO BEGIN
@@ -155,20 +149,46 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 		    ENDELSE	
 		    time       = data.time
 		    IF KEYWORD_SET(overview)THEN BEGIN
-			window,0,ys=900,xs=1200
-			!p.multi=[0,1,2]
-			tsel = 50
-			tfind:
-			id = where(abs(time-tsel) eq min(abs(time-tsel)))
-			print,'Time: ',tsel
-			plot,wavelength,emiss[*,id[0]],/ylog,yr=[1e16,1e20],xs=1
-			CONTOUR,emiss>1e15<(mean(emiss)*4),wavelength,time,nle=50,/fill,xs=1
-			oplot,[0,1000],[tsel,tsel],linest=5
-			cursor,x,y,/up
-			tsel = y
-			goto,tfind
+			window,0
+			CONTOUR,emiss>1e15<(mean(emiss)*4),wavelength,time,nle=50,/fill,yr=tr,xtitle='Wavelength [nm]',ytitle='Time [s]'
+			id_nii   = where(wavelength ge 399.3 and wavelength le 399.7)
+			id_nii2  = where(wavelength ge 403.0 and wavelength le 405.0)
+			id_niii  = where(wavelength ge 400.4 and wavelength le 400.5)
+			id_niv   = where(wavelength ge 405.6 and wavelength le 405.7)
+			id_di    = where(wavelength ge 396.5 and wavelength le 397.2)
+			id_brem  = where(wavelength ge 401.0 and wavelength le 402.0)
+			nii_avr  = time
+			nii2_avr  = time
+			niii_avr = time
+			niv_avr  = time
+			di_avr   = time
+			brem_avr   = time
+			for i=0,n_elements(time)-1 do nii_avr[i]  = int_tabulated(wavelength[id_nii],emiss[id_nii,i])
+			for i=0,n_elements(time)-1 do nii_avr[i]  = int_tabulated(wavelength[id_nii],emiss[id_nii,i])
+			for i=0,n_elements(time)-1 do nii2_avr[i]  = int_tabulated(wavelength[id_nii2],emiss[id_nii2,i])
+			for i=0,n_elements(time)-1 do niii_avr[i] = int_tabulated(wavelength[id_niii],emiss[id_niii,i])
+			for i=0,n_elements(time)-1 do niv_avr[i] = int_tabulated(wavelength[id_niv],emiss[id_niv,i])
+			for i=0,n_elements(time)-1 do di_avr[i]   = int_tabulated(wavelength[id_di],emiss[id_di,i])
+			for i=0,n_elements(time)-1 do brem_avr[i]   = int_tabulated(wavelength[id_brem],emiss[id_brem,i])
+			window,1,xs=1000,ys=900
+			!p.multi=[0,1,4]
+			!p.charsize=2.0
+			adas_colors,colors=colors
+			plot,time,nii_avr,xtitle='Time [s]',ytitle='N II @ 399.5',xr=tr
+			oplot,time,smooth(nii_avr,15),col=colors.red
+			plot,time,nii2_avr/nii_avr,xtitle='Time [s]',ytitle='N II ratio',xr=tr,yr=[0,0.5]
+			oplot,time,smooth(nii2_avr,15)/smooth(nii_avr,15),col=colors.red
+			plot,time,niii_avr,xtitle='Time [s]',ytitle='N III @ 400.5',xr=tr
+			oplot,time,smooth(niii_avr,15),col=colors.red
+			plot,time,di_avr,xtitle='Time [s]',ytitle='D I @ 397',xr=tr
+			oplot,time,smooth(di_avr,15),col=colors.red
+			window,2
+			!p.multi=0
+			spec_avr = wavelength
+			for i=0,n_elements(wavelength)-1 do spec_avr[i]=int_tabulated(time,emiss[i,*])
+			plot,wavelength,spec_avr,xs=1,xtitle='Wavelength [nm]',ytitle='Time integrated spectra'
 			STOP
-		    ENDIF
+		    ENDIF		    
 		    IF ~KEYWORD_SET(calwave)THEN wavelength = wavelength+ wcal
 
 ;	**********************************
@@ -192,17 +212,48 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 ;	*************************************************************
 
 	    	    	    	IF KEYWORD_SET(backc)THEN useback=backc
-
+;	*************************************************************
+;	**** Fit full spectra              ****
+;	*************************************************************
+				IF KEYWORD_SET(fitall)THEN BEGIN
+					nii_range=[0,10000] 
+					id = WHERE(wavelength GT nii_range[0] and wavelength lt nii_range[1] )
+					IF keyword_set(calwave)then test=cal_wav(wavelength[id],emissivity[id],shotstr,diag)
+					id_reduce_gauss=WHERE(gauss.pos LE MAX(wavelength[id])and gauss.pos GE MIN(wavelength[id]))
+					id_reduce_voigt=WHERE(voigt.pos LE MAX(wavelength[id])and voigt.pos GE MIN(wavelength[id]))
+					gauss_new = {pos:gauss.pos[id_reduce_gauss],$
+				             ion:gauss.ion[id_reduce_gauss],$
+					     couple:gauss.couple[id_reduce_gauss],$
+					     trn:gauss.trn[id_reduce_gauss],$
+					     fwhm:gauss.fwhm,$
+					     erc:gauss.erc,diag:gauss.diag}
+					gauss_use_1=gauss_new
+					if ~keyword_set(fitback)then fixback=0 else fixback=abs(1-fitback)
+					if id_reduce_voigt[0] ne -1 then begin
+						voigt_new = {pos:voigt.pos[id_reduce_voigt],$
+					             fwhml:voigt.fwhml[id_reduce_voigt],$
+					             fwhmg:voigt.fwhmg,$
+						     couple:voigt.couple[id_reduce_voigt],$
+					     		nbalmer:voigt.nbalmer[id_reduce_voigt]}
+						voigt_use_1=voigt_new
+						params_1= run_ffs_fit(wavelength[id],emissivity[id],yerr=yerror[id],$
+		                                      mdlfile=mdlfile,background=useback,fixback=fixback,$
+						      instr_func=data.instr_func,debug=debug,voigt=voigt_use_1,$
+				                      gauss=gauss_use_1,psplot=psplot,/nomodel,use_tau=use_tau)
+					endif else $
+						params_1= run_ffs_fit(wavelength[id],emissivity[id],yerr=yerror[id],mdlfile=mdlfile,$
+								 background=useback,fixback=fixback,instr_func=data.instr_func,debug=debug,$
+				                                 gauss=gauss_use_1,psplot=psplot,/nomodel,use_tau=use_tau)
+				ENDIF
 ;	*************************************************************
 ;	**** Fit spectra over 398 < lambda < 409 nm              ****
 ;	*************************************************************
 
-				
-				if keyword_set(kt3a) then nii_range=[363,390] else nii_range=[399,409] 
-				if keyword_set(calwave) or keyword_set(fitall) then nii_range=[0,1000] 
+				if mean(wavelength) gt 400 and mean(wavelength) lt 410 then nii_range=[399,409] else nii_range=[459,462.5]
+				nii_range=[399,409] 
+				if keyword_set(calwave)then nii_range=[0,1000] 
 				id = WHERE(wavelength GT nii_range[0] and wavelength lt nii_range[1] )
-
-				IF keyword_set(calwave)then test=cal_wav(wavelength[id],emissivity[id],shotstr,diag,spec)
+				IF keyword_set(calwave)then test=cal_wav(wavelength,emissivity,shotstr,diag)
 				id_reduce_gauss=WHERE(gauss.pos LE MAX(wavelength[id])and gauss.pos GE MIN(wavelength[id]))
 				id_reduce_voigt=WHERE(voigt.pos LE MAX(wavelength[id])and voigt.pos GE MIN(wavelength[id]))
 				gauss_new = {pos:gauss.pos[id_reduce_gauss],$
@@ -243,18 +294,18 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 				niv_time_err(j,i,0) = params_1.nvi_err
 				nv_time(j,i,0)      = params_1.nv
 				nv_time_err(j,i,0)  = params_1.nv_err
-				IF mean(wavelength) gt 400 and mean(wavelength) lt 410 then begin				
 								      
 ;	*************************************************************
 ;	**** Fit spectra over 396 < lambda < 400.5 nm            ****
 ;	*************************************************************
-				id = WHERE(wavelength gt 396.5 and wavelength lt 400.5 ) 
+				;IF mean(wavelength) gt 400 and mean(wavelength) lt 410 then begin
+				id = WHERE(wavelength gt 394.5 and wavelength lt 400.5 ) 
 				id_reduce_gauss=WHERE(gauss.pos LE MAX(wavelength[id])and gauss.pos GE MIN(wavelength[id]))
 				gauss_new = {pos:gauss.pos[id_reduce_gauss],$
 				             ion:gauss.ion[id_reduce_gauss],$
 					     couple:gauss.couple[id_reduce_gauss],$
-					     fwhm:gauss.fwhm,$
 					     trn:gauss.trn[id_reduce_gauss],$
+					     fwhm:gauss.fwhm,$
 					     erc:gauss.erc,diag:gauss.diag}
 				id_reduce_voigt=WHERE(voigt.pos LE MAX(wavelength[id])and voigt.pos GE MIN(wavelength[id]))
 				
@@ -277,6 +328,8 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 				
 				nii_time(j,i,0)      = params_2.n399  
 				nii_time_err(j,i,0)  = params_2.n399_err  
+				ne_balmer(j,i)       = params_2.balmer_ne
+	    	    	    	ne_balmer_err(j,i)   = params_2.balmer_ne_err
 				hi_time(j,i,0)       = params_2.h72
 				hi_time_err(j,i,0)   = params_2.h72_err
 				niii_time(j,i,1)     = params_2.niii2  
@@ -286,12 +339,12 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 ;	**** Fit spectra over 406 < lambda < 411 nm              ****
 ;	*************************************************************
 
-				id = WHERE(wavelength gt 408 and wavelength lt 411 ) 
+				id = WHERE(wavelength gt 406 and wavelength lt 411 ) 
 				id_reduce_gauss=WHERE(gauss.pos LE MAX(wavelength[id])and gauss.pos GE MIN(wavelength[id]))
 				gauss_new = {pos:gauss.pos[id_reduce_gauss],$
 				             ion:gauss.ion[id_reduce_gauss],$
-					     trn:gauss.trn[id_reduce_gauss],$
 					     couple:gauss.couple[id_reduce_gauss],$
+					     trn:gauss.trn[id_reduce_gauss],$
 					     fwhm:gauss.fwhm,$
 					     erc:gauss.erc,diag:gauss.diag}
 				id_reduce_voigt=WHERE(voigt.pos LE MAX(wavelength[id])and voigt.pos GE MIN(wavelength[id]))
@@ -321,10 +374,8 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 				niii_time_err(j,i,0) = params_3.niii_err  
 				nii_time(j,i,3)      = params_1.n408    
 				nii_time_err(j,i,3)  = params_1.n408_err    
-				nii_time(j,i,4)      = params_3.n409   
-				nii_time_err(j,i,4)  = params_3.n409_err       
-				ne_balmer(j,i)       = params_2.balmer_ne
-	    	    	    	ne_balmer_err(j,i)   = params_2.balmer_ne_err
+				nii_time(j,i,4)      = params_1.n409   
+				nii_time_err(j,i,4)  = params_1.n409_err       
 
     	    	    	    	IF KEYWORD_SET(debug)THEN BEGIN
 				    IF KEYWORD_SET(psplot)THEN makeps,file='overview_spectra.ps',xs=8,ys=5
@@ -353,7 +404,6 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 ;	**** Fit full N II spectra to determine Te and ne        ****
 ;	*************************************************************
 				
-			    	endif
 				ires       = 0
 			    	emissivity = 0.0
 			    	IF icount EQ 0 THEN progress,0.0,/reset,label='Progress (%)',frequency=1.0
@@ -412,8 +462,7 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 		   balmer_err:balmer_err,$
 		   time:time,$
 		   wavelength:wavelength,$
-		   los_names:red_los[id_sig],$
-		   rvals:jet_coord}
+		   los_names:data.los[id_sig]}
 	RETURN,output
 END
 

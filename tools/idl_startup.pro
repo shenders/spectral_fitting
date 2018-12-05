@@ -6,6 +6,10 @@ print,'Author  : Stuart Henderson '
 print,'Contact : stuart.henderson@ukaea.uk'
 print,'Year    : 2018'
 print,'------------------------------------------------'
+device, true_color=24
+device, decomposed=0
+device, retain=2
+LOADCT,5
 !path='fetch:'+!path
 !path='model:'+!path
 !path='tools:'+!path

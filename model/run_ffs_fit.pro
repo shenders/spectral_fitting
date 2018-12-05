@@ -8,11 +8,10 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 ;	************************************
 ;	**** Initialise data            ****
 ;	************************************
-	id   = where(spectrum gt 0 and finite(spectrum) eq 1 and yerr gt 0)
+	
+	id   = where(spectrum gt 0 and finite(spectrum) eq 1)
 	y    = spectrum[id]
     	x    = x[id]
-	IF N_ELEMENTS(x) LT 2 THEN GOTO,nofit
-
 	IF KEYWORD_SET(yerr)then yerr = yerr[id]	
 	ynorm          = where(x lt 400)
 	if ynorm[0] eq -1 then maxy=max(y) else maxy = max(y[ynorm])
@@ -29,12 +28,15 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 		    id = where(y lt 3.0*miny)
 		    backc=mean(y[id])
 		ENDIF ELSE backc          = hist_back
+		backc          = hist_back
 	endif else backc=background	
+	if backc lt 0.5 * min (y) then backc = min(y)
 	IF ~KEYWORD_SET(fixback)THEN fixback  = 0
+
 	instr_func_str = STRTRIM(STRING(instr_func,FORMAT='(D6.3)'),2)
     	background_str = STRTRIM(STRING(backc,FORMAT='(D10.7)'),2)
     	background_up  = STRTRIM(STRING(backc*1.25,FORMAT='(D10.7)'),2)
-    	background_lw  = STRTRIM(STRING(backc*0.55,FORMAT='(D10.7)'),2)
+    	background_lw  = STRTRIM(STRING(backc*0.2,FORMAT='(D10.7)'),2)
 	IF ~KEYWORD_SET(yerr)then err  = FLTARR(N_ELEMENTS(y))+backc*0.1 ELSE err  = yerr/maxy
 ;	************************************
 ;	**** Setup MDL file             ****
@@ -50,8 +52,6 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 ;	************************************
 
 	IF KEYWORD_SET(use_tau)THEN afg_file = 'adasn1_t' else afg_file = 'adasn1_r' 	
-	afg_file = 'adasn1_t' 
-	IF ~KEYWORD_SET(use_tau)THEN use_tau=200.0
 	IF ~KEYWORD_SET(nomodel)THEN PRINTF,unit_write,'       (* (broaden-gaussian (adas-'+afg_file+' nspec) nbroad ) mul)'
     	PRINTF,unit_write,'       (background-linear backg)'
 	
@@ -60,6 +60,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 ;	************************************
 
 	
+	IF N_ELEMENTS(x) LT 2 THEN GOTO,nofit
 	IF ~KEYWORD_SET(gauss) THEN ngauss = 0 ELSE BEGIN
 	    ngauss     = N_ELEMENTS(gauss.pos)
     	    gauss_str  = REPLICATE({pos:'',area:'',areaup:'',arealw:'',posup:'',poslw:'',fwhm:'',name:''},ngauss)
@@ -72,20 +73,19 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	FOR i=0,ngauss-1 DO BEGIN
 	    gauss_str(i).pos   = STRTRIM(STRING(gauss.pos(i),FORMAT='(D10.5)'),2)    
 	    gauss_str(i).name  = STRCOMPRESS(STRLOWCASE(gauss.ion(i)),/REMOVE_ALL)
-	    gauss_str(i).name  = gauss_str(i).name+'w'+STRING(gauss.pos(i)*10,FORMAT='(I4)')+'t'+gauss.trn(i)
-	    
+	    gauss_str(i).name  = gauss_str(i).name+STRING(gauss.pos(i)*10,FORMAT='(I4)')+gauss.trn(i)
 	    
 	    if keyword_Set(calwave) then begin
 	    	gauss_str(i).posup = STRTRIM(STRING(gauss.pos(i)+0.1,FORMAT='(D10.5)'),2)    
 	    	gauss_str(i).poslw = STRTRIM(STRING(gauss.pos(i)-0.1,FORMAT='(D10.5)'),2)    
 	    endif else begin
-	    	gauss_str(i).posup = STRTRIM(STRING(gauss.pos(i)+0.03,FORMAT='(D10.5)'),2)    
-	    	gauss_str(i).poslw = STRTRIM(STRING(gauss.pos(i)-0.03,FORMAT='(D10.5)'),2)    
+	    	gauss_str(i).posup = STRTRIM(STRING(gauss.pos(i)+0.05,FORMAT='(D10.5)'),2)    
+	    	gauss_str(i).poslw = STRTRIM(STRING(gauss.pos(i)-0.05,FORMAT='(D10.5)'),2)    
     	    endelse
 ;	************************************
 ;	**** Estimate area guess        ****
 ;	************************************
-    	    inten      = MAX((INTERPOL(y,x,FINDGEN(10)*0.05/9.0+gauss.pos(i)-0.005)))-backc
+    	    inten      = MAX((INTERPOL(y,x,FINDGEN(10)*0.2/9.0+gauss.pos(i)-0.005)))-backc
 	    sigma      = gauss.fwhm / 2.35482
 	    area_guess = inten * sigma * SQRT(2.0*3.141) 
 	    area_guess = area_guess > 1E-5
@@ -119,21 +119,14 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 
     	PRINTF,unit_write,'     )'
 	PRINTF,unit_write,'adas_fit)'
-    	fix_backm=1
-	if fix_backm then begin
-	    PRINTF,unit_write,'(setval backg.m 0.00)'
-	    PRINTF,unit_write,'(fixed backg.m)'
-	endif else begin    
-	    PRINTF,unit_write,'(setval backg.m -0.05)' 
-    	    PRINTF,unit_write,'(setlimits backg.m -0.1 0.1)' 
-    	endelse
-	PRINTF,unit_write,'(setval backg.c '+background_str+')'
+    	PRINTF,unit_write,'(setval backg.m 0.0000)' 
+    	PRINTF,unit_write,'(fixed backg.m)' 
+    	PRINTF,unit_write,'(setval backg.c '+background_str+')'
         IF KEYWORD_SET(fixback)THEN PRINTF,unit_write,'(fixed backg.c)' ELSE $
 	                            PRINTF,unit_write,'(setlimits backg.c '+background_lw+' '+background_up+')'
 	IF ~KEYWORD_SET(nomodel)THEN BEGIN
 		PRINTF,unit_write,'(setval nspec.te 4.5)(setlimits nspec.te 2.0 10.0)'
-		;PRINTF,unit_write,'(setval nspec.te 4.0)(fixed nspec.te)'
-		PRINTF,unit_write,'(setval nspec.dens 1.00E14)(setlimits nspec.dens 1e12 1e15)' 
+		PRINTF,unit_write,'(setval nspec.dens 1.00E14)(setlimits nspec.dens 1e13 1e15)' 
 		PRINTF,unit_write,'(setval nspec.norm 1)'
 		PRINTF,unit_write,'(setval nspec.ionbal 1)'
 		IF KEYWORD_SET(use_tau)THEN PRINTF,unit_write,'(setval nspec.tau '+STRING(use_tau,format='(e8.2)')+')(fixed nspec.tau)' 
@@ -150,9 +143,8 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	        PRINTF,unit_write,'(setval d.dens '+dens_str+')'
         	PRINTF,unit_write,'(fixed d.dens)'
         ENDIF ELSE BEGIN
-	    	PRINTF,unit_write,'(setval d.dens 1.0e20)'
-        	PRINTF,unit_write,'(setlimits d.dens 1.0e18 1.0e21)'
-        	;PRINTF,unit_write,'(fixed d.dens)'
+	    	PRINTF,unit_write,'(setval d.dens 3.0e20)'
+        	PRINTF,unit_write,'(setlimits d.dens 1.0e19 1.0e21)'
 	ENDELSE	
     	ENDIF	
 ; End update
@@ -162,9 +154,9 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
     	    PRINTF,unit_write,'(setval '+gauss_str(i).name+'.pos '+gauss_str(i).pos+')'
 	    PRINTF,unit_write,'(setlimits '+gauss_str(i).name+'.pos '+gauss_str(i).poslw+' '+gauss_str(i).posup+')'
 	    PRINTF,unit_write,'(setval '+gauss_str(i).name+'.fwhm '+gauss_str(i).fwhm+')' 
-	    fix_fwhm=0
+	    fix_fwhm=1
 	    IF fix_fwhm THEN PRINTF,unit_write,'(fixed '+gauss_str(i).name+'.fwhm )' $
-	                ELSE PRINTF,unit_write,'(setlimits '+gauss_str(i).name+'.fwhm 0.070 0.09)'
+	                ELSE PRINTF,unit_write,'(setlimits '+gauss_str(i).name+'.fwhm 0.08 0.45)'
     	    
 	    FOR ii=1,MAX(gauss.couple) DO BEGIN
 	    	IF (gauss.couple(i) GT ii-1 and gauss.couple(i) LT ii)THEN BEGIN
@@ -177,7 +169,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 		ENDIF
 	    ENDFOR
 	    PRINTF,unit_write,'(setval '+gauss_str(i).name+'.area '+gauss_str(i).area+')'
-	    PRINTF,unit_write,'(setlimits '+gauss_str(i).name+'.area 0.000005 '+gauss_str(i).areaup+')'
+	    PRINTF,unit_write,'(setlimits '+gauss_str(i).name+'.area 0.00005 '+gauss_str(i).areaup+')'
 	    coupling_complete:
 	    PRINTF,unit_write,''
 	    ENDIF
@@ -204,11 +196,9 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 		PRINTF,unit_write,'(setlimits hi'+strname+'.area 0.00005 '+voigt_str(i).areaup+')'
 	    ENDELSE	    	
 	    PRINTF,unit_write,'(setval hi'+strname+'.fwhm '+voigt_str(i).fwhmg+')'    	
-	    if ~keyword_set(fix_fwhm)then fix_fwhm=1
-	    if fix_fwhm then PRINTF,unit_write,'(fixed hi'+strname+'.fwhm'+')'  $
-	                else PRINTF,unit_write,'(setlimits hi'+strname+'.fwhm 0.070 0.09)'  
-	    PRINTF,unit_write,''
+	    PRINTF,unit_write,'(fixed hi'+strname+'.fwhm'+')'    
 ; End update
+	    PRINTF,unit_write,''
 	ENDFOR
 	
 	CLOSE,unit_write & FREE_LUN,unit_write
@@ -235,7 +225,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	    wvstr = STRTRIM(STRING(x[0],x[N_ELEMENTS(x)-1],FORMAT='("wv_",I3,"-",I3)'),2)   	    	    
 	    !p.thick=1.0
 	    IF KEYWORD_SET(psplot)THEN makeps,XS=8,YS=5,file='debug_'+wvstr+'.ps' ELSE WINDOW,0
-	    PLOT,x,y*maxy,XTITLE='Wavelength / nm',YTITLE='ph/s/m2/sr/nm',yr=[MIN(y*maxy)*0.1,MAX(y*maxy)],/YLOG,XSTY=1,/NODATA  ;& OPLOT,xset,init*maxy,linest=5,thick=3.0
+	    PLOT,x,y*maxy,XTITLE='Wavelength / nm',YTITLE='ph/s/m2/sr/nm',yr=[MIN(y*maxy),MAX(y*maxy)],/YLOG,XSTY=1,/NODATA  ;& OPLOT,xset,init*maxy,linest=5,thick=3.0
 	    user_psym,1 & OPLOT,x,y*maxy;,PSYM=8
 	ENDIF
 	fit           = obj_new('ffs_fit',debug=debug)
@@ -289,6 +279,11 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	IF KEYWORD_SET(debug)THEN BEGIN
 	    OPLOT,x,resid*maxy,col=colors.blue
 	ENDIF	
+	IF KEYWORD_SET(debug)THEN BEGIN
+	    IF KEYWORD_SET(psplot)THEN makeps,XS=8,YS=3,file='debug_'+wvstr+'_resid.ps' ELSE WINDOW,1
+	    fitted=(*(model->getresult())).intensity	    
+	    user_psym,1,/fill & PLOT,x,(y - fitted)/y,yr=[-1,1],xs=1,psym=8,xr=[396,411] 
+	ENDIF
 	if ~keyword_set(nomodel)then begin
 	    te_n1         = (parvals(WHERE(parnames_full EQ 'nspec.te')))[0]
 	    ne_n1         = (parvals(WHERE(parnames_full EQ 'nspec.dens')))[0]
@@ -335,6 +330,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
     	    	nconc_err_lw = -1
     	    ENDELSE	    	
 	    
+	    n_395_int = -1
 	    n_399_int = -1
 	    n_wi_int  = -1
 	    n_402_int = -1
@@ -347,6 +343,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	    h_72_int  = -1
 	    h_62_int  = -1
 	    n_399_err = -1
+	    n_395_err = -1
 	    n_wi_err  = -1
 	    n_402_err = -1
 	    n_404_err = -1
@@ -366,8 +363,15 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	    
     	endif else begin
 
+	    wave      = 395.58
+	    n_id      = where(strpos(parnames_full,'.pos') ne -1)
+	    id_pos    = where(abs(parvals(n_id)-wave) eq min(abs(parvals(n_id)-wave)))
+	    str       = strmid(parnames_full[n_id[id_pos]],0,strpos(parnames_full[n_id[id_pos]],'.pos'))+'.area'
+	    n_395_int = parvals[where(parnames_full EQ str[0])]*maxy
+	    n_395_err = parvalserr[where(parnames_err EQ str[0])]*maxy
+	    	    
 	    wave      = 399.5
-	    n_id      = where(strpos(parnames_full,'.pos') ne -1 and strpos(parnames_full,'n2') ne -1)
+	    n_id      = where(strpos(parnames_full,'.pos') ne -1)
 	    id_pos    = where(abs(parvals(n_id)-wave) eq min(abs(parvals(n_id)-wave)))
 	    str       = strmid(parnames_full[n_id[id_pos]],0,strpos(parnames_full[n_id[id_pos]],'.pos'))+'.area'
 	    n_399_int = parvals[where(parnames_full EQ str[0])]*maxy
@@ -385,7 +389,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	    for ii=0,n_elements(wave)-1 do begin
 	    	n_id      = where(strpos(parnames_full,'.pos') ne -1 and strpos(parnames_full,'n2') ne -1)
 		id_pos    = where(abs(parvals(n_id)-wave(ii)) eq min(abs(parvals(n_id)-wave(ii))))
-		str       = strmid(parnames_full[n_id[id_pos]],0,strpos(parnames_full[n_id[id_pos]],'.pos'))+'.area'
+	    	str       = strmid(parnames_full[n_id[id_pos]],0,strpos(parnames_full[n_id[id_pos]],'.pos'))+'.area'
 	    	n_402_int = n_402_int+parvals[where(parnames_full EQ str[0])]*maxy
 	    	if cple(ii) eq 1 then n_402_error = parvalserr[where(parnames_err EQ str[0])]/parvals[where(parnames_full EQ str[0])]
 	    endfor
@@ -394,7 +398,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	    wave      = [403.5,404.13,404.35,404.47,405.68] & n_404_int=0.0 
 	    cple      = [0    ,1     ,0     ,0     ,0     ] 
 	    for ii=0,n_elements(wave)-1 do begin
-	    	n_id      = where(strpos(parnames_full,'.pos') ne -1 and strpos(parnames_full,'n2') ne -1) 
+	    	n_id      = where(strpos(parnames_full,'.pos') ne -1)
 	    	id_pos    = where(abs(parvals(n_id)-wave(ii)) eq min(abs(parvals(n_id)-wave(ii))))
 	    	str       = strmid(parnames_full[n_id[id_pos]],0,strpos(parnames_full[n_id[id_pos]],'.pos'))+'.area'
 	    	n_404_int = n_404_int+parvals[where(parnames_full EQ str[0])]*maxy
@@ -412,7 +416,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	    wave      = [407.30,407.69,408.21] & n_408_int=0.0 
 	    cple      = [1     ,0     ,0     ] 
 	    for ii=0,n_elements(wave)-1 do begin
-	    	n_id      = where(strpos(parnames_full,'.pos') ne -1 and strpos(parnames_full,'n2') ne -1)
+	    	n_id      = where(strpos(parnames_full,'.pos') ne -1)
 	    	id_pos    = where(abs(parvals(n_id)-wave(ii)) eq min(abs(parvals(n_id)-wave(ii))))
 	    	str       = strmid(parnames_full[n_id[id_pos]],0,strpos(parnames_full[n_id[id_pos]],'.pos'))+'.area'
 	    	n_408_int = n_408_int+parvals[where(parnames_full EQ str[0])]*maxy
@@ -421,7 +425,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	    n_408_err = n_408_int * n_408_error[0]
 	    
 	    wave      = 408.7
-	    n_id      = where(strpos(parnames_full,'.pos') ne -1 and strpos(parnames_full,'n2') ne -1)
+	    n_id      = where(strpos(parnames_full,'.pos') ne -1)
 	    id_pos    = where(abs(parvals(n_id)-wave) eq min(abs(parvals(n_id)-wave)))
 	    str       = strmid(parnames_full[n_id[id_pos]],0,strpos(parnames_full[n_id[id_pos]],'.pos'))+'.area'
 	    n_409_int = parvals[where(parnames_full EQ str[0])]*maxy
@@ -514,10 +518,10 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
     	    	    PRINT,'Balmer Feature Details:'
 	    	    PRINT,'ne / m-3    : ',parvals[where(parnames_full EQ 'd.dens')],' +/- ',parvalserr[where(parnames_err EQ 'd.dens')]
 	    	ENDIF
-           endelse
+        	endelse
 	stop
     	ENDIF
-	
+
 	return,{norm:maxy, te:te_n1, $
 	                   te_err:te_n1_err,$
 			   ne_err:ne_n1_err,$
@@ -541,8 +545,10 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 			   h62:h_62_int,$
 	                   h72_err:h_72_err,$
 			   h62_err:h_62_err,$
+			   n395:n_395_int,$
 			   n399:n_399_int,$
 			   n402:n_402_int,$
+	                   n395_err:n_395_err,$
 	                   n399_err:n_399_err,$
 			   n402_err:n_402_err,$
 			   balmer_ne_err:parvalserr[where(parnames_full EQ 'd.dens')],$
@@ -563,50 +569,51 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 			   backgrounderr:cbackerr, $
 			   backm:mback}
 	nofit:
-	return,{norm:-1, $
-	    	te:-1, $
-	        te_err:-1,$
-		ne_err:-1,$
-		dens:-1,$
-		niii:-1,$
-		niii2:-1,$
-		nvi:-1,$
-		nwi:-1,$
-		niii_err:-1,$
-		niii2_err:-1,$
-		nvi_err:-1,$
-		nwi_err:-1,$
-	        h72:-1,$
-		h62:-1,$
-	        h72_err:-1,$
-		h62_err:-1,$
-		nv:-1,$
-		nv_err:-1,$
-		nconc:-1,$
-		nconc_err_up:-1,$
-		nconc_err_lw:-1,$
-		n399:-1,$
-		n402:-1,$
-	        n399_err:-1,$
-		n402_err:-1,$
-		balmer_ne_err:-1,$
-		balmer_ne:-1,$
-		neii:-1,$
-		neiv:-1,$
-		neii_err:-1,$
-		neiv_err:-1,$
-		n404:-1,$
-		n408:-1,$
-		n409:-1,$
-		n404_err:-1,$
-		n408_err:-1,$
-		n409_err:-1,$
-		wavelength:-1,$
-		balmerfit:-1,$
-		fitted:-1,$
-		gaussians:-1,$
-		background:-1, $
-		backgrounderr:-1, $
-		backm:-1}
+	return,{norm:maxy, te:-1, $
+	                   te_err:-1,$
+			   ne_err:-1,$
+			   dens:-1,$
+			   niii:-1,$
+			   niii2:-1,$
+			   nvi:-1,$
+			   nwi:-1,$
+			   niii_err:-1,$
+			   niii2_err:-1,$
+			   nvi_err:-1,$
+			   nwi_err:-1,$
+	                   h72:-1,$
+			   h62:-1,$
+	                   h72_err:-1,$
+			   h62_err:-1,$
+			   nv:-1,$
+			   nv_err:-1,$
+			   nconc:-1,$
+			   nconc_err_up:-1,$
+			   nconc_err_lw:-1,$
+			   n395:-1,$
+			   n399:-1,$
+			   n402:-1,$
+	                   n395_err:-1,$
+	                   n399_err:-1,$
+			   n402_err:-1,$
+			   balmer_ne_err:-1,$
+			   balmer_ne:-1,$
+			   neii:-1,$
+			   neiv:-1,$
+			   neii_err:-1,$
+			   neiv_err:-1,$
+			   n404:-1,$
+			   n408:-1,$
+			   n409:-1,$
+			   n404_err:-1,$
+			   n408_err:-1,$
+			   n409_err:-1,$
+			   wavelength:-1,$
+			   balmerfit:-1,$
+			   fitted:-1,$
+			   gaussians:-1,$
+			   background:-1, $
+			   backgrounderr:-1, $
+			   backm:-1}
 
 END
