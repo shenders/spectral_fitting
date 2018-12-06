@@ -1,3 +1,66 @@
+FUNCTION find_elm,shot,tline,emiss,psplot=psplot,plot_stats=plot_stats,binsize=binsize,experiment=experiment,trange=trange
+	
+	
+	IF keyword_set(trange)then begin
+		id=where(tline ge trange[0] and tline le trange[1])
+		tline=tline[id]
+		emiss=emiss[id]
+	endif
+	
+	tr=[min(tline),max(tline)]
+	res = tline[1]-tline[0]
+	tline=tline+res/2.0
+	read_data,'ELM',shot,f_elm,time,experiment=experiment
+	idgtzero = WHERE(time GT 0)
+	time     = time[idgtzero]
+	f_elm    = f_elm[idgtzero]
+	
+	idelms           = WHERE(time GE tr[0] AND time LE tr[1])
+	time             = time[idelms]
+	elmtime          = time
+	telm             = FLTARR(n_elements(tline))
+	time_to_next_elm = FLTARR(n_elements(tline))
+	FOR i=0,N_ELEMENTS(tline)-1 DO BEGIN
+		id2      = WHERE(elmtime LE tline(i))
+		id2      = MAX(id2)
+		IF id2 EQ -1 THEN telm(i)=-1 ELSE telm(i)  = tline(i) - elmtime[id2] 
+		IF id2 EQ N_ELEMENTS(elmtime)-1 THEN time_to_next_elm(i)=-1 ELSE time_to_next_elm(i)  = elmtime[id2+1]-tline(i)
+	ENDFOR
+	telm = telm*1e3
+	time_to_next_elm=time_to_next_elm*1e3
+
+	IF KEYWORD_SET(plot_stats)THEN BEGIN
+
+		bins = [0.0001,0.0005,0.0010,0.0015,0.0020,0.0025,0.0030,0.0035,0.0040,0.0045,0.005,$
+       			0.0055,0.0060,0.0065,0.0070,0.0075,0.0080,0.0085,0.0090,0.0095,0.010]*1e3	
+		bin       = 0.0
+		data1     = 0.0
+		telm_plot = telm
+		norm      = MAX(emiss)
+		nii       = emiss/norm
+		FOR i=0,N_ELEMENTS(bins)-2 DO BEGIN
+       			id   = where(telm_plot ge bins(i) and telm_plot lt bins(i+1))
+       			IF id[0] ne -1 THEN BEGIN
+	     			bin   = [bin,(bins(i)+bins(i+1))/2.0]    
+	     			ndata = N_ELEMENTS(id)
+	     			data1 = [data1,(MOMENT(nii(id)))[0]] 
+       			ENDIF
+		ENDFOR
+		bin   = bin[1:*]
+		data1 = data1[1:*]*norm
+		!p.charsize=2.0
+		user_psym,1
+		IF KEYWORD_SET(psplot)THEN makeps,file=title+'elm_stats_hi.ps',xs=8,ys=5 ELSE BEGIN
+			window,0,xs=700,ys=600 
+		ENDELSE	
+
+		IF KEYWORD_SET(psplot)THEN makeps,file=title+'elm_stats_nii.ps',xs=8,ys=5
+		plot,telm_plot,nii*norm,psym=8,xr=[0,10],/ylog 
+		oplot,bin,data1
+		oplot,[res,res]*1e3,[0,1e23],linest=5
+	ENDIF
+	RETURN,telm
+END
 PRO convert_eiss,file,type=type
     	if ~keyword_set(type)then type=3
 	print,'Converting eissner to standard notation for file: ',file

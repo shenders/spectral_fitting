@@ -1,4 +1,4 @@
-Function get_data,shot,machine,diag=diag
+Function get_data,shot,machine,diag=diag,interelm=interelm
 
 IF machine eq 'AUG' THEN BEGIN
     !path = expand_path('+/afs/ipp/u/mcavedon/VS/lib:')+':'+!path

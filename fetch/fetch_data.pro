@@ -8,17 +8,17 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 			  wshift=wshift,$
 			  diag=diag,$
 			  resolution=resolution,$
-			  nomodel=nomodel,$
 			  use_tau=use_tau, $
                           keep_file = keep_file,$
 			  overview=overview,$
 			  interelm=interelm,$
-			  elmcond=elmcond,$
 			  machine=machine,$
 			  rrange=rrange,$
 			  fitall=fitall,$
-			  kt3a=kt3a,neon=neon,$
-			  spec=spec,use_bart=use_bart
+			  kt3a=kt3a,$
+			  save=save,$
+			  load=load,$
+			  append=append
 			  
 			  
     	!QUIET=1
@@ -34,11 +34,16 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 
 	shotstr = string(shot,format='(I5)')
 
+	if keyword_set(load)then begin
+		restore,'save/'+shotstr+'/'+append+'.idl',/verb
+		return,output
+	endif				  
+
 ;	**********************************
 ;	**** Read data ****
 ;	**********************************
 
-	data = get_data(shot,machine,diag=diag)
+	data = get_data(shot,machine,diag=diag,interelm=interelm)
 		
 ;	**********************************
 ;	**** Setup spectral line fitting *
@@ -464,6 +469,13 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 		   time:time,$
 		   wavelength:wavelength,$
 		   los_names:data.los[id_sig]}
+	if keyword_set(save)then begin
+		cmd = 'mkdir -p save/'+shotstr
+		spawn,cmd
+		if ~keyword_set(append)then append='data'
+		file = 'save/'+shotstr+'/'+append+'.idl'
+		save,file=file,output
+	endif
 	RETURN,output
 END
 
