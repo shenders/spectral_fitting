@@ -2,5 +2,5 @@
 
 IDL_STARTUP="tools/idl_startup.pro"
 export IDL_STARTUP
-idl -v 8.2 
+idl -v 8.2 || idl
 echo 'Exiting spectral fitting environment ...'

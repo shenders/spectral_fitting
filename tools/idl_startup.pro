@@ -18,7 +18,7 @@ LOADCT,5
 !path='fetch/machine/AUG:'+!path
 .r library.pro
 print,'************************************************'
-print,'Start by running eg. '
-print,'IDL> x=fetch_data(<shot>,<sightline>)'
+print,'Start by running eg. AUG:'
+print,"IDL> x=fetch_data(35158,'ROV-12',tr=[2.0,6.2],machine='AUG',diag='EVS')"
 print,' For more info readme.txt'
 print,'************************************************'
