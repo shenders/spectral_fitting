@@ -13,9 +13,9 @@ LOADCT,5
 !path='fetch:'+!path
 !path='model:'+!path
 !path='tools:'+!path
-!path='machine:'+!path
-!path='machine/JET:'+!path
-!path='machine/AUG:'+!path
+!path='fetch/machine:'+!path
+!path='fetch/machine/JET:'+!path
+!path='fetch/machine/AUG:'+!path
 .r library.pro
 print,'************************************************'
 print,'Start by running eg. '
