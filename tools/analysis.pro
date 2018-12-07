@@ -3,11 +3,11 @@ PRO basic_fit,te_val=te_val,func=func,dens=dens,tec3995=tec3995,exc3995=exc3995,
 	if ~keyword_set(te_val)then te_val=3.5
 	te = te_val+fltarr(100)
 ; 399.5 line
-	read_adf15,file='atomic/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=exc3995,block=15
-	read_adf15,file='atomic/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=rec3995,block=65
+	read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=exc3995,block=15
+	read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=rec3995,block=65
 ; 404.2 line	
-	read_adf15,file='atomic/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=exc4042,block=21
-	read_adf15,file='atomic/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=rec4042,block=71
+	read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=exc4042,block=21
+	read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=rec4042,block=71
 ; Ionisation balance
     	run_adas405, uid='adas', year='96', elem='n', te=te, dens=dens, frac=frac
 ; Line ratio at fixed temperature	
@@ -16,8 +16,8 @@ PRO basic_fit,te_val=te_val,func=func,dens=dens,tec3995=tec3995,exc3995=exc3995,
 
 	if keyword_set(use402)then begin
 	; 402.6 line
-		read_adf15,file='atomic/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=exc4026,block=19
-		read_adf15,file='atomic/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=rec4026,block=69
+		read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=exc4026,block=19
+		read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=rec4026,block=69
 		tec3995 = (frac.ion[*,1] * exc4026 + frac.ion[*,2] * rec4026) 
 	endif
 	func    = tec4042 / tec3995
@@ -89,9 +89,9 @@ for i=0,n_elements(sightline)-1 do begin
 		
 	; Get nitrogen concentrations from spectroscopy
 
-	read_adf15,file='atomic/pec98#n_ssh_pju#n1.dat',te=te_lower+fltarr(n_elements(time)),$
+	read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te_lower+fltarr(n_elements(time)),$
 		dens=densfitl[*,sightline[i]],data=exc3995,block=15
-	read_adf15,file='atomic/pec98#n_ssh_pju#n1.dat',te=te_lower+fltarr(n_elements(time)),$
+	read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te_lower+fltarr(n_elements(time)),$
 		dens=densfitl[*,sightline[i]],data=rec3995,block=65
 			      
 	run_adas405,elem='n',year='96',uid='adas',te=te_lower+fltarr(n_elements(time)),$
@@ -101,9 +101,9 @@ for i=0,n_elements(sightline)-1 do begin
 
 	cn_low = 3.14 * 4.0 * smooth(nii3995[*,sightline[i]],sv) * transmission / (densfitl[*,sightline[i]] * pec3995) / DeltaL / (densfitl[*,sightline[i]]*1e6)
 
-	read_adf15,file='atomic/pec98#n_ssh_pju#n1.dat',te=te_upper+fltarr(n_elements(time)),$
+	read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te_upper+fltarr(n_elements(time)),$
 		dens=densfitu[*,sightline[i]],data=exc3995,block=15
-	read_adf15,file='atomic/pec98#n_ssh_pju#n1.dat',te=te_upper+fltarr(n_elements(time)),$
+	read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te_upper+fltarr(n_elements(time)),$
 		dens=densfitu[*,sightline[i]],data=rec3995,block=65
 			      
 	run_adas405,elem='n',year='96',uid='adas',te=te_upper+fltarr(n_elements(time)),$
