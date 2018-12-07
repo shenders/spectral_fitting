@@ -59,7 +59,9 @@ IF machine eq 'AUG' THEN BEGIN
 		red_time   = time
 		red_wavel  = (red_wavel+wshift)
 		red_error  = red_emiss * 0.1
-		IF diag EQ 'FVS' THEN instr_func = 0.08 ELSE instr_func=0.08
+		IF diag EQ 'FVS' THEN instr_func = 0.085
+		IF diag EQ 'EVS' THEN instr_func = 0.072
+		IF diag EQ 'GVS' THEN instr_func = 0.15 
 		IF diag EQ 'DVS' THEN instr_func = 0.16
 		PRINT,'Time resolution: ',red_time(1)-red_time(0)
 		IF ~KEYWORD_SET(resolution) THEN resolution   = 0.0001
@@ -75,9 +77,6 @@ IF machine eq 'AUG' THEN BEGIN
 			endif
 		endif
 	ENDELSE	
-
-	IF diag EQ 'HVS' THEN instr_func=0.1;instr_func=0.3
-
 ENDIF
 IF machine EQ 'JET'THEN BEGIN
         !PATH=!PATH + ':' + $

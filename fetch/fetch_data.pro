@@ -1,8 +1,10 @@
 FUNCTION fetch_data,shot, sig,tr=tr,$
                           backc=backc,$
 			  fitback=fitback,$
+			  species=species,$
 			  mdlfile=mdlfile,$
 			  psplot=psplot,$
+			  range=range,$
 			  calwave=calwave,$
 			  debug=debug,$
 			  wshift=wshift,$
@@ -35,9 +37,11 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 	shotstr = string(shot,format='(I5)')
 
 	if keyword_set(load)then begin
-		restore,'save/'+shotstr+'/'+append+'.idl',/verb
+		restore,'save/'+shotstr+'/'+sig+'-'+append+'.idl',/verb
 		return,output
 	endif				  
+
+	if ~keyword_set(mdlfile)then mdlfile = 'tmp/'+shotstr + sig + '.mdl'
 
 ;	**********************************
 ;	**** Read data ****
@@ -48,8 +52,8 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 ;	**********************************
 ;	**** Setup spectral line fitting *
 ;	**********************************
-
-    	gauss = gauss_lines(species=['He','C','O','N','W'],instr_func=data.instr_func,diag=diag,/unknown)
+	if ~keyword_set(species)then species=['He','C','O','N','W']
+    	gauss = gauss_lines(species=species,instr_func=data.instr_func,diag=diag,/unknown)
 	voigt = voigt_lines(species=['D'],instr_func=data.instr_func,diag=diag)
 	
 ;	**********************************
@@ -106,6 +110,8 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 		ntime          = N_ELEMENTS(data.time)
 		wi_time        = FLTARR(ntime,nsig,3)
 		wi_time_err    = FLTARR(ntime,nsig,3)
+		ari_time       = FLTARR(ntime,nsig,2)
+		ari_time_err   = FLTARR(ntime,nsig,2)
 		nii_time       = FLTARR(ntime,nsig,5)
 		nii_time_err   = FLTARR(ntime,nsig,5)
 		niii_time      = FLTARR(ntime,nsig,2)
@@ -156,7 +162,7 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 		    time       = data.time
 		    IF KEYWORD_SET(overview)THEN BEGIN
 			window,0
-			CONTOUR,emiss>1e15<(mean(emiss)*4),wavelength,time,nle=50,/fill,yr=tr,xtitle='Wavelength [nm]',ytitle='Time [s]'
+			CONTOUR,emiss>1e15<(mean(emiss)*7),wavelength,time,nle=50,/fill,yr=tr,xtitle='Wavelength [nm]',ytitle='Time [s]'
 			id_nii   = where(wavelength ge 399.3 and wavelength le 399.7)
 			id_nii2  = where(wavelength ge 403.0 and wavelength le 405.0)
 			id_niii  = where(wavelength ge 400.4 and wavelength le 400.5)
@@ -169,6 +175,11 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 			niv_avr  = time
 			di_avr   = time
 			brem_avr   = time
+			window,2
+			!p.multi=0
+			spec_avr = wavelength
+			for i=0,n_elements(wavelength)-1 do spec_avr[i]=int_tabulated(time,emiss[i,*])
+			plot,wavelength,spec_avr,xs=1,xtitle='Wavelength [nm]',ytitle='Time integrated spectra'
 			for i=0,n_elements(time)-1 do nii_avr[i]  = int_tabulated(wavelength[id_nii],emiss[id_nii,i])
 			for i=0,n_elements(time)-1 do nii_avr[i]  = int_tabulated(wavelength[id_nii],emiss[id_nii,i])
 			for i=0,n_elements(time)-1 do nii2_avr[i]  = int_tabulated(wavelength[id_nii2],emiss[id_nii2,i])
@@ -188,11 +199,6 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 			oplot,time,smooth(niii_avr,15),col=colors.red
 			plot,time,di_avr,xtitle='Time [s]',ytitle='D I @ 397',xr=tr
 			oplot,time,smooth(di_avr,15),col=colors.red
-			window,2
-			!p.multi=0
-			spec_avr = wavelength
-			for i=0,n_elements(wavelength)-1 do spec_avr[i]=int_tabulated(time,emiss[i,*])
-			plot,wavelength,spec_avr,xs=1,xtitle='Wavelength [nm]',ytitle='Time integrated spectra'
 			STOP
 		    ENDIF		    
 		    IF ~KEYWORD_SET(calwave)THEN wavelength = wavelength+ wcal
@@ -222,7 +228,7 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 ;	**** Fit full spectra              ****
 ;	*************************************************************
 				IF KEYWORD_SET(fitall)THEN BEGIN
-					nii_range=[0,10000] 
+					if ~keyword_set(range)then nii_range=[0,10000] else nii_range=range 
 					id = WHERE(wavelength GT nii_range[0] and wavelength lt nii_range[1] )
 					IF keyword_set(calwave)then test=cal_wav(wavelength[id],emissivity[id],shotstr,diag)
 					id_reduce_gauss=WHERE(gauss.pos LE MAX(wavelength[id])and gauss.pos GE MIN(wavelength[id]))
@@ -250,6 +256,12 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 						params_1= run_ffs_fit(wavelength[id],emissivity[id],yerr=yerror[id],mdlfile=mdlfile,$
 								 background=useback,fixback=fixback,instr_func=data.instr_func,debug=debug,$
 				                                 gauss=gauss_use_1,psplot=psplot,/nomodel,use_tau=use_tau)
+					ari_time(j,i,0)     = params_1.ari  
+					ari_time_err(j,i,0) = params_1.ari_err  
+					ari_time(j,i,1)     = params_1.ari2  
+					ari_time_err(j,i,1) = params_1.ari2_err  
+					
+					goto,skipnext
 				ENDIF
 ;	*************************************************************
 ;	**** Fit spectra over 398 < lambda < 409 nm              ****
@@ -381,8 +393,14 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 				nii_time(j,i,3)      = params_1.n408    
 				nii_time_err(j,i,3)  = params_1.n408_err    
 				nii_time(j,i,4)      = params_1.n409   
-				nii_time_err(j,i,4)  = params_1.n409_err       
-
+				nii_time_err(j,i,4)  = params_1.n409_err 
+				if params_2.balmer_ne lt 1e15 then begin
+					ne_balmer(j,i)       = params_3.balmer_ne
+	    	    	    		ne_balmer_err(j,i)   = params_3.balmer_ne_err
+				endif else begin
+					ne_balmer(j,i)       = params_2.balmer_ne
+	    	    	    		ne_balmer_err(j,i)   = params_2.balmer_ne_err				
+				end
     	    	    	    	IF KEYWORD_SET(debug)THEN BEGIN
 				    IF KEYWORD_SET(psplot)THEN makeps,file='overview_spectra.ps',xs=8,ys=5
 				    PRINT,'Ratio 404/399:', nii_time(j,i,1)/nii_time(j,i,0)
@@ -405,7 +423,7 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
     	    	    	    	    oplot,params_3.wavelength,params_3.fitted*params_3.norm,col=colors.green
 				    stop
 				ENDIF
-
+				skipnext:
 ;	*************************************************************
 ;	**** Fit full N II spectra to determine Te and ne        ****
 ;	*************************************************************
@@ -425,6 +443,8 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 ;	**** Prepare data for output structure                   ****
 ;	*************************************************************
 	id_use         = FINDGEN(N_ELEMENTS(idt)/nires)*nires+idt[0]+nires-1
+	ari_time       = ari_time[id_use,*,*] 
+	ari_time_err   = ari_time_err[id_use,*,*] 
 	wi_time        = wi_time[id_use,*,*] 
 	wi_time_err    = wi_time_err[id_use,*,*] 
 	te_time        = te_time[id_use,*,*] 
@@ -456,6 +476,8 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 		   nconc_err_lw:n1_time_err_lw,$		   
 		   wi:wi_time,$
 		   wi_err:wi_time_err,$
+		   ari:ari_time,$
+		   ari_err:ari_time_err,$
 		   nii:nii_time,$
 		   nii_err:nii_time_err,$
 		   niii:niii_time,$
@@ -473,7 +495,7 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 		cmd = 'mkdir -p save/'+shotstr
 		spawn,cmd
 		if ~keyword_set(append)then append='data'
-		file = 'save/'+shotstr+'/'+append+'.idl'
+		file = 'save/'+shotstr+'/'+sig+'-'+append+'.idl'
 		save,file=file,output
 	endif
 	RETURN,output

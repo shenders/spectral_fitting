@@ -282,7 +282,9 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	IF KEYWORD_SET(debug)THEN BEGIN
 	    IF KEYWORD_SET(psplot)THEN makeps,XS=8,YS=3,file='debug_'+wvstr+'_resid.ps' ELSE WINDOW,1
 	    fitted=(*(model->getresult())).intensity	    
-	    user_psym,1,/fill & PLOT,x,(y - fitted)/y,yr=[-1,1],xs=1,psym=8,xr=[396,411] 
+	    user_psym,1,/fill & PLOT,x,(y - fitted)/y,yr=[-1,1],xs=1,psym=8
+	    oplot,x,res.intensity,col=colors.green,thick=1.0
+	    oplot,x,-res.intensity,col=colors.green,thick=1.0
 	ENDIF
 	if ~keyword_set(nomodel)then begin
 	    te_n1         = (parvals(WHERE(parnames_full EQ 'nspec.te')))[0]
@@ -337,6 +339,8 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	    n_404_int = -1
 	    n_408_int = -1
 	    n_409_int = -1
+	    Ar_750_int = -1
+	    Ar_751_int = -1
 	    n_nvi_int = -1
 	    n_niii_int= -1
 	    n_niii2_int= -1
@@ -349,6 +353,8 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	    n_404_err = -1
 	    n_408_err = -1
 	    n_409_err = -1
+	    Ar_750_err = -1
+	    Ar_751_err = -1
 	    n_nvi_err = -1
 	    n_niii_err= -1
 	    n_niii2_err= -1
@@ -438,6 +444,20 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	    n_v_int   = parvals[where(parnames_full EQ str[0])]*maxy
 	    n_v_err   = parvalserr[where(parnames_err EQ str[0])]*maxy
 
+	    wave      = 750.38
+	    n_id      = where(strpos(parnames_full,'.pos') ne -1)
+	    id_pos    = where(abs(parvals(n_id)-wave) eq min(abs(parvals(n_id)-wave)))
+	    str       = strmid(parnames_full[n_id[id_pos]],0,strpos(parnames_full[n_id[id_pos]],'.pos'))+'.area'
+	    Ar_750_int = parvals[where(parnames_full EQ str[0])]*maxy
+	    Ar_750_err = parvalserr[where(parnames_err EQ str[0])]*maxy
+
+	    wave      = 751.46
+	    n_id      = where(strpos(parnames_full,'.pos') ne -1)
+	    id_pos    = where(abs(parvals(n_id)-wave) eq min(abs(parvals(n_id)-wave)))
+	    str       = strmid(parnames_full[n_id[id_pos]],0,strpos(parnames_full[n_id[id_pos]],'.pos'))+'.area'
+	    Ar_751_int = parvals[where(parnames_full EQ str[0])]*maxy
+	    Ar_751_err = parvalserr[where(parnames_err EQ str[0])]*maxy
+
 	    wave      = 369.4
 	    n_id      = where(strpos(parnames_full,'.pos') ne -1)
 	    id_pos    = where(abs(parvals(n_id)-wave) eq min(abs(parvals(n_id)-wave)))
@@ -526,6 +546,10 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	                   te_err:te_n1_err,$
 			   ne_err:ne_n1_err,$
 			   dens:ne_n1,$
+			   ari:ar_750_int,$
+			   ari2:ar_751_int,$
+			   ari_err:ar_750_err,$
+			   ari2_err:ar_751_err,$
 			   niii:n_niii_int,$
 			   niii2:n_niii2_int,$
 			   nvi:n_nvi_int,$
@@ -574,6 +598,10 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 			   ne_err:-1,$
 			   dens:-1,$
 			   niii:-1,$
+			   ari:-1,$
+			   ari2:-1,$
+			   ari_err:-1,$
+			   ari2_err:-1,$
 			   niii2:-1,$
 			   nvi:-1,$
 			   nwi:-1,$

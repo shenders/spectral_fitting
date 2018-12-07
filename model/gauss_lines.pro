@@ -42,10 +42,15 @@ Ne_lines = [ 375.120 , 370.960 , 377.710 , 373.490 , 366.410 , 376.630 , 369.420
              372.710 , 364.390 , 371.310 , 381.360 , 371.350 ]
 Ne_trn	 = [ '3p3s'  , '3p3s'  , '3p3s'  , '3p3s'  , '3p3s'  , '3p3s'  , '3p3s'  , $
              '3p3s'  , '3p3s'  , '3p3s'  , '3p3s'  , '3p3s'  ]
-Ne_ion	 = [ 'Ne2'   , 'Ne2'   , 'Ne2'   , 'Ne2'   , 'Ne2'   , 'Ne2'   , 'Ne2'   , $
+Ne_ions  = [ 'Ne2'   , 'Ne2'   , 'Ne2'   , 'Ne2'   , 'Ne2'   , 'Ne2'   , 'Ne2'   , $
              'Ne2'   , 'Ne2'   , 'Ne2'   , 'Ne4'   , 'Ne4'   ]
 Ne_cpl	 = [ 0.00    , 0.00    , 0.00    , 0.00    , 0.00    , 0.00    , 0.00    , $
              0.00    , 0.00    , 0.00    , 0.00    , 0.00    ]
+; Ar lines
+Ar_lines = [ 750.387 , 751.465 ]
+Ar_trn	 = [ '4p4s'  , '4p4s'  ]
+Ar_ions	 = [ 'Ar1'   , 'Ar1'   ]
+Ar_cpl	 = [ 0.00    , 0.00    ]
 
 ; Tungsten lines
 W_lines  = [400.876 , 407.449]
@@ -54,11 +59,12 @@ W_trn    = ['6p6s'  , '6p6s' ]
 W_cpl    = [0.00    , 0.00   ]
 
 ; Unknown lines
-X_lines  = [396.20  , 396.89  , 399.7   , 401.38  , 401.493 , 402.478 , 402.533 , 407.88  , 408.06  , 409.55 , 410.6]
+X_lines  = [399.29 , 399.35 , 399.57, 396.20  , 396.89  , 399.7   , 401.38  , 401.493 , $
+            402.478 , 402.533 , 407.88  , 408.06  , 409.55 , 410.6 , 750.0 , 750.9, 751.99]
 X_ions   = strarr(n_elements(X_lines))+'xx'
 X_trn    = strarr(n_elements(X_lines))+'xxxx'
-X_cpl    = [0.00    , 0.00    , 0.00    , 0.00    , 0.00    , 1.00    , 0.69    , 0.00    , 0.00    , 0.00   , 0.00 ]
-
+X_cpl    = strarr(n_elements(X_lines))+0.0
+X_cpl[1:2] = [1.0, 0.65]
 
 pos = 0.0
 ion = '-1'
@@ -114,6 +120,16 @@ if id[0] ne -1 then begin
     id = where(Ne_cpl > 0)
     if id[0] ne -1 then Ne_cpl[id] = Ne_cpl[id] + max_cpl
     cpl = [cpl,Ne_cpl]
+endif
+id = where(species eq 'Ar')
+if id[0] ne -1 then begin
+    pos = [pos,Ar_lines]
+    ion = [ion,Ar_ions]
+    trn = [trn,Ar_trn]
+    max_cpl = max(cpl)
+    id = where(Ar_cpl > 0)
+    if id[0] ne -1 then Ar_cpl[id] = Ar_cpl[id] + max_cpl
+    cpl = [cpl,Ar_cpl]
 endif
 id = where(species eq 'W')
 if id[0] ne -1 then begin

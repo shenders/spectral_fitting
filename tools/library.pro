@@ -1,3 +1,33 @@
+FUNCTION cal_wav,x,y,shot,diag,spec
+
+
+	    nist_vac = [373.791,375.574,376.094,379.234,388.909,397.01,399.613,404.245,410.174]
+	    nist_air = nist_vac-0.113
+	    id = where(nist_air ge min(x) and nist_air le max(x))
+	    nist_air=nist_air[id] 
+	    
+	    plot,x,y,/ylog,xr=[min(x),max(x)]
+	    xmax=-1
+	    print,'Click on centre wavelength for line: '
+	    for i=0,n_elements(nist_air)-1 do begin
+	    	print,nist_air(i)
+		oplot,[nist_air(i),nist_air(i)],[1e10,1e22],linest=5
+		cursor,x1,y1,/up
+		idx  = where(x ge x1-0.1 and x le x1+0.1)
+		idm  = where(y[idx] eq max(y[idx]))
+		xmax = [xmax,x[idx[idm[0]]]]
+	    endfor
+	    xmax=xmax[1:*]
+	    wcal = interpol(nist_air - xmax,nist_air,x)
+	    print,nist_air - xmax
+	    print,nist_air
+	    print,xmax
+	    plot,x,wcal
+	    wcal_file='tmp/wcal'+DIAG+STRING(shot,format='(I5)')+'.sav'
+	    save,file=wcal_file,wcal
+	    STOP
+return,wcal
+END	    
 FUNCTION find_elm,shot,tline,emiss,psplot=psplot,plot_stats=plot_stats,binsize=binsize,experiment=experiment,trange=trange
 	
 	
@@ -61,110 +91,150 @@ FUNCTION find_elm,shot,tline,emiss,psplot=psplot,plot_stats=plot_stats,binsize=b
 	ENDIF
 	RETURN,telm
 END
-PRO convert_eiss,file,type=type
-    	if ~keyword_set(type)then type=3
-	print,'Converting eissner to standard notation for file: ',file
-	read_adf04,file=file,fulldata=fulldata,/ignore_untied 
-    	xxcomments,file=file,comments=comments
-    	FOR i=0,N_ELEMENTS(fulldata.wa)-1 DO BEGIN
-		xxcftr,in_cfg=fulldata.cstrga(i),out_cfg=cstr,type=type
-    	    	fulldata.cstrga(i)=cstr
-    	ENDFOR
-	write_adf04,outfile=file,fulldata=fulldata,comments=comments
-END
-PRO read_flush, pulse, time , rmin , rmaj , ra , psi , kappa, delta, amin , qprof , btor, phin, xsurs, ysurs , shaf , theory=theory
+pro read_data,sig,shot,output,time,trange=trange,ascii=ascii,doplot=doplot,res=res,experiment = experiment,edition=edition
 
-; Very short example script for idl_flush.so
+;    if shot eq 32244 and sig eq 'ELM' then begin
+;    	experiment = 'MBERN'
+;	edition = 2L
+;    endif		
+    if shot eq 33258 and sig eq 'ELM' then begin
+    	experiment = 'SHENDERS'
+	edition = 0L
+    endif		
+    if shot eq 33268 and sig eq 'ELM' then begin
+    	experiment = 'SHENDERS'
+	edition = 0L
+    endif		
+    
+    ; Set the correct version of libddww
 
-ier=0
+    if (!VERSION.MEMORY_BITS eq 32) then begin              
+	_libddww = '/afs/ipp/aug/ads/lib/@sys/libddww.so'  
+    endif else begin                                        
+	_libddww = '/afs/ipp/aug/ads/lib64/@sys/libddww.so'
+    endelse
 
-if n_params() lt 2 then time=60.0
-if n_params() lt 1 then pulse=54186
+    ; Choose the right shotfile
 
-; call flushinit (renamed flush)
-; the 1st argument being 15 means it uses the EFIT PPF
+    if ~keyword_set(experiment)then experiment='AUGD'
+    if sig eq 'Nimp' then begin
+    	diagnostic = 'CES'
+	signalname = 'nimp'
+    endif	
+    if sig eq 'ipsa' then begin
+    	diagnostic = 'MAC'
+	signalname = 'Ipolsola'
+    endif	
+    if sig eq 'ipsi' then begin
+    	diagnostic = 'MAC'
+	signalname = 'Ipolsoli'
+    endif	
+    if sig eq 'ELM' then begin
+    	diagnostic = 'ELM'
+	signalname = 'f_ELM'
+    endif	
+    if sig eq 'ELMi' then begin
+    	diagnostic = 'POT'
+	signalname = 'ELMi-Ha'
+    endif	
+    if sig eq 'ELMa' then begin
+    	diagnostic = 'POT'
+	signalname = 'ELMa-Ha'
+    endif	
+    if sig eq 'Npuff' then begin
+    	diagnostic = 'UVS'
+	signalname = 'N_tot'
+    endif	
+    if sig eq 'Tdiv' then begin
+    	diagnostic = 'DDS'
+	signalname = 'Tdiv'
+    endif	
+    if sig eq 'Wmhd' then begin
+    	diagnostic = 'GQI'
+	signalname = 'Wmhd'
+    endif	
+    if sig eq 'Dpuff' then begin
+    	diagnostic = 'UVS'
+	signalname = 'D_tot'
+    endif	
+    if sig eq 'Nrad' then begin
+    	diagnostic = 'GVL'
+	signalname = 'Ne'
+    endif	
+     if sig eq 'LSD' then begin
+    	diagnostic = 'LSD'
+	signalname = 'ne-ua3'
+    endif	
+   if ~keyword_set(edition)then edition=0L				; Last closed edition
 
-flushinit,15,pulse,time,0,0,'JETPPF','EFIT',0,ier,idl_err=idl_err  
+    ; Open the shotfile
+    error=0L
+    diaref=0L
+    date='123456789012345668'		; String with 18 characters
+    shot=LONG(shot)
+    result=call_external(_libddww,'ddgetaug','ddopen', $
+           error,experiment,diagnostic,shot,edition,diaref,date)
+    if (error ne 0) then begin		; Print error message
+	result=call_external(_libddww,'ddgetaug','xxerror', $
+	   error,3L,diagnostic)
+	return
+    endif
+    ; Read the timebase
 
-; get the psi value on the LCFS
+    type=2L				; real values
+    k1=1L				; Read from index 1 to 35000
+    k2=200000L				
+    time=fltarr(k2)
+    leng=0L
+    result=call_external(_libddww,'ddgetaug','ddtbase', $
+           error,diaref,signalname,k1,k2,type,k2,time,leng)
+    if (error ne 0) then begin
+	result=call_external(_libddww,'ddgetaug','xxerror', $
+	   error,3L,signalname)
+	return
+    endif
+    nt=leng				; Number of values returned
 
-flupx,ier
-psisep=fltarr(2)
-get_flsep_psisep,psisep
+    ; Read the plasmacurrent
 
-; define all the variables used in the FLUSUR call
+    output=fltarr(k2)
+    result=call_external(_libddww,'ddgetaug','ddsignal', $
+           error,diaref,signalname,k1,k2,type,k2,output,leng)
+    if (error ne 0) then begin
+	result=call_external(_libddww,'ddgetaug','xxerror', $
+	   error,3L,signalname)
+	return
+    endif
 
-kk=100
-ll=100.0
-xsur=fltarr(kk)
-ysur=fltarr(kk)
-brsur=fltarr(kk)
-bzsur=fltarr(kk)
-xsurs=fltarr(ll,kk)
-ysurs=fltarr(ll,kk)
-psi=psisep(0)*(findgen(ll)+1)/ll
+    ; Close the shotfile
 
-; read in a set of interior surfaces using FLUSUR
-rho    = fltarr(ll)
-btor   = fltarr(ll)
-qprof  = fltarr(ll)
-rmajor = fltarr(ll)
-rminor = fltarr(ll)
-rmin   = fltarr(ll)
-shaf   = fltarr(ll)
-kappa  = fltarr(ll)
-delta  = fltarr(ll)
-answer = 0.0
-for l=0,ll-1 do begin
-  psisur=psi(l)
-  lopt=2
-  flusur,psisur,kk,xsur,ysur,brsur,bzsur,lopt,ier
-  xsurs(l,*) = xsur
-  ysurs(l,*) = ysur
-  rmajor(l)  = (MAX(xsur)+MIN(xsur))/2.0
-  rminor(l)  = MAX(xsur)-rmajor(0)
-  rmin(l)    = MAX(xsur)-rmajor(l)
-endfor
-aminor  = MAX(rminor)
-amin    = MAX(rmin)
-R0_cent = (MAX(xsurs)+MIN(xsurs))/2.0
-normr   = rminor / aminor
-normr1  = rmin / amin
-for l=0,ll-1 do begin
-  R0       = (MAX(xsurs(l,*))+MIN(xsurs(l,*)))/2.0
-  Z0       = (MAX(ysurs(l,*))+MIN(ysurs(l,*)))/2.0
-  Zmax     = MAX(ysurs(l,*))
-  shaf(l)  = (MAX(xsurs(l,*)) - R0_cent - rmin(l)) / (1.0 - (rmin(l)/amin)^2)
-  kappa(l) = (Zmax - Z0)/rmin(l)
-  const    = ACOS((R0 - R0_cent - shaf(l) * (1.0+(rmin(l)/amin)^2))/rmin(l)) 
-  delta(l) = SIN(const - 3.141/2.0)
-endfor
-
-id = WHERE(FINITE(shaf) EQ 0,COMPLEMENT=idx)
-IF id[0] NE -1 THEN shaf[id]  = INTERPOL(shaf[idx],idx,id)
-IF id[0] NE -1 THEN delta[id] = INTERPOL(delta[idx],idx,id)
-
-flapsi,ll,psi,rho,ier
-flush_getqprofile,ll,psi,qprof,ier
-;==========================
-; Normalised toroidal flux
-;==========================
-tlfs = FLTARR(ll) 
-FOR i=1,ll-1 DO tlfs(i)=INT_TABULATED(psi(0:i),qprof(0:i))
-phin = tlfs / MAX(tlfs)  
-
-  IF ~KEYWORD_SET(theory)then begin
-    ra     = normr
-    rmin   = rminor
-    rmaj   = rmajor(0) 
-  ENDIF ELSE BEGIN
-    ra     = normr1
-    rmin   = rmin
-    rmaj   = rmajor
-  ENDELSE  
-flush_getbt,ll,rmin+rmajor,fltarr(ll)+0.0,btor,ier
-btor = btor / 1e4
-
+    result=call_external(_libddww,'ddgetaug','ddclose', $
+           error,diaref)
+	IF KEYWORD_SET(trange)THEN BEGIN
+		id   = WHERE(time GE trange[0] and time LE trange[1])
+		IF id[0] NE -1 THEN BEGIN
+			time   = time[id]
+			output = output[id]
+		ENDIF
+	ENDIF		 
+	IF KEYWORD_SET(res)THEN BEGIN
+		ntime  = (MAX(time)-MIN(time))/res
+		tline  = FINDGEN(ntime)*(MAX(time)-MIN(time))/(ntime-1.0)+MIN(time)
+		out    = INTERPOL(output,time,tline)
+		time   = tline
+		output = out
+	ENDIF		 
+	IF KEYWORD_SET(ascii)THEN BEGIN
+		GET_LUN,unit_write & file = 'cview_out.txt'
+		OPENW,unit_write,file
+		PRINTF,unit_write,'  Time / s    Value'
+		FOR i=0,N_ELEMENTS(time)-1 DO PRINTF,unit_write,STRING(time(i),output(i),FORMAT='(E12.4,E12.4)')
+		CLOSE,unit_write & FREE_LUN,unit_write
+	
+	ENDIF	   
+	IF KEYWORD_SET(doplot)THEN BEGIN
+		PLOT,time,output,XTIT='Time / s',YTIT='Value'
+	ENDIF	   
 end
 PRO user_psym,psym,fill=fill
 ;   ****************************
@@ -362,26 +432,6 @@ FUNCTION BINOMIALVEC,VECTOR1,VECTOR2
   RETURN,SQUARE
 END 
 
-
-FUNCTION COLPICK,COLOR
-
-CASE COLOR OF
-  'red':    BEGIN
-             NO=20 & TVLCT,255,0,0,NO
-            END
-  'blue':   BEGIN
-             NO=30 & TVLCT,0,0,255,NO
-            END
-  'green':  BEGIN
-             NO=40 & TVLCT,0,255,0,NO
-            END
-  'white':  BEGIN
-             NO=50 & TVLCT,255,255,255,NO
-            END
-END	
-RETURN,NO
-END    
-
 PRO SHIMAGE,DATA,X,Y,RANGE=RANGE,TITLE=TITLE,XTITLE=XTITLE,YTITLE=YTITLE,XRANGE=XRANGE,YRANGE=YRANGE,CHARSIZE=CHARSIZE,NOBAR=NOBAR,XSTYLE=XSTYLE,YSTYLE=YSTYLE
 ;============================
 ; ENSURE X-AXIS IS LINEAR
@@ -518,7 +568,7 @@ IF ~KEYWORD_SET(CLOSE)THEN BEGIN
     !P.CHARSIZE=1.5
     SET_PLOT,'ps'
     DEVICE,COLOR=1,XSIZE=XSIZE,YSIZE=YSIZE,/INCHES,BITS_PER_PIXEL=64,FILE=FILENAME,$
-           FONT_SIZE=14,LANDSCAPE=LANDSCAPE,PORTRAIT=PORTRAIT,/ENCAPSULATED
+           FONT_SIZE=11,LANDSCAPE=LANDSCAPE,PORTRAIT=PORTRAIT,/ENCAPSULATED
 ENDIF ELSE BEGIN
     DEVICE,/CLOSE_FILE
     SET_PLOT,'X'
@@ -1771,6 +1821,261 @@ Function graphpos,xidx,yidx,rows,cols,xspc=xspc,yspc=yspc,xlim=xlim,ylim=ylim
     y1   = 1.0 - (ylim[0] + ydiv * yidx + yspc * yidx)
     y0   = y1 - ydiv
 return,[x0,y0,x1,y1]
+end
+
+
+pro progress,percentin,bigstep=bigstepin,smallstep=smallstepin, $
+                 reset=reset,last=last,label=label,noeta=noeta, $
+                 frequency=frequency,progstring=pstring, $
+                 noprint=noprint,norecurse=norecurse, $
+                 minval=minvalin,maxval=maxvalin
+
+;+
+;NAME:
+;     PROGRESS
+;PURPOSE:
+;     Prints a progress summary in percent done and time remaining as
+;     a process runs.  Call this routine multiple times from the
+;     running process while updating the percent done parameter.
+;CATEGORY:
+;CALLING SEQUENCE:
+;     progress,percent
+;INPUTS:
+;     percent = percent finished (in range 0 to 100, unless minval and
+;               maxval are set)
+;OPTIONAL INPUT PARAMETERS:
+;KEYWORD PARAMETERS
+;     /reset = this must be set for the first call to set up variables.
+;     /last = the process is done and this is the last call.  Optional
+;             for the last call.  Makes sure the printout goes all the
+;             way to 100%, does a final carriage return, and resets
+;             some variables.
+;     label = string to print at the front of the progress line.  Only
+;             used on the first call when /reset is set.
+;     bigstep = percentage multiple to print the percent done as a
+;               number (def = 25).  Only used on the first call when
+;               /reset is set.  Integer.
+;     smallstep = percentage multiple to print a dot (def = 5).  Only
+;                 used on the first call when /reset is set.  Integer.
+;     minval = percent value at process start (default = 0.0).  Only
+;                 used on the first call when /reset is set.  Integer.
+;     maxval = percent value at process end (default = 100.0).  Only
+;                 used on the first call when /reset is set.  Integer.
+;     /noeta = Do not print the estimated time to completion.  This
+;              feature depends on your terminal accepting 8b as a
+;              backspace character. If this does not work, the
+;              formatting will be messed up.  So, if your formatting
+;              is messed up, set this keyword to turn the feature off.
+;     frequency = If set, update the estimated time to completion
+;                 if at least 'frequency' seconds have passed since
+;                 the last update.  The time is always printed when a
+;                 dot or number is printed, as well. If set to 2, for
+;                 example, update approximately every two seconds, etc. 
+;                 If set to 0, update on every call to progress.
+;                 The default (not set) is to update the time only
+;                 when a dot or number is printed. 
+;OUTPUTS:
+;COMMON BLOCKS:
+;SIDE EFFECTS:
+;RESTRICTIONS:
+;     Assumes that nothing else is printed between calls.  If it is,
+;     the formatting will be messed up.  If you change the size of the
+;     terminal during the process, the formatting may also be messed
+;     up if it might have gone over the length of a line.  The
+;     counting is done with integers, so you can't count, for example,
+;     from 0. to 1. with dots printed at intervals of 0.1, regardless
+;     of how you set minval and maxval.
+;PROCEDURE:
+;     Call the routine multiple times as progress is made.  It will
+;     print numbers and dots to indicate the progress, e.g.
+;     Label:  0 .... 25 .... 50 .... 75 .... 100  | Time=00:00:00
+;     Also prints an estimated time to completion, HH:MM:SS
+;EXAMPLE:
+;     progress,0.0,/reset,label='Progress (%)'
+;     for i=0,n-1 do begin
+;        ; your processing goes here
+;        progress,100.*float(i+1.0)/n
+;     endfor
+;     progress,100.,/last
+;     Progress (%):  0 .... 25 .... 50 .... 75 .... 100  | Time=00:00:00
+;
+;     Or, you can use the minval and maxval keywords to change the
+;     range of the counting:
+;
+;     progress,0.,/reset,label='test',bigstep=128,smallstep=32,maxval=512
+;     for i=0,511 do begin
+;        wait,0.1
+;        progress,i+1
+;     endfor
+;     progress,512.,/last
+;     test:  0 ... 128 ... 256 ... 384 ... 512  | Time=00:00:51
+;MODIFICATION HISTORY:
+;     T. Metcalf 2005-Jan-06
+;     2005-Jan-10 Added frequency keyword.
+;     2005-Jan-12 Move time to end of final string so that it does not
+;                 move.
+;     2005-Jan-13 If /last is set, the time printed is the total elapsed
+;                 time.
+;     2005-Jan-19 Added minval and maxval keywords.
+;     2005-Feb-01 Check for rpercent eq 0 in eta calculation.
+;     2005-Feb-11 Remove strcompress around user label.
+;-
+
+common progress_private,bigstep,smallstep,lastpercent,starttime,lasttime, $
+                        ncharacters,progstring,ttysize,minval,maxval
+
+if n_elements(frequency) GE 1 then freq = float(frequency[0])>0.0 else freq = 0.0
+
+if keyword_set(reset) OR not keyword_set(bigstep) or not keyword_set(smallstep) or $
+   n_elements(lastpercent) LE 0 then $
+   doreset = 1 else doreset = 0
+if n_elements(lastpercent) GT 0 and not keyword_set(doreset) then $
+   if lastpercent LT minval then doreset = 1
+
+if keyword_set(doreset)  then begin
+   if not keyword_set(bigstepin) then bigstep=25 $
+   else bigstep = round(bigstepin)
+   if not keyword_set(smallstepin) then smallstep=5 $
+   else smallstep = round(smallstepin)
+   if n_elements(minvalin) LE 0 then minval = 0.0 else minval = float(minvalin)
+   if n_elements(maxvalin) LE 0 then maxval = 100.0 else maxval = float(maxvalin)
+   if smallstep GT bigstep then smallstep=bigstep
+
+   if NOT keyword_set(norecurse) then begin ; Get full output string for counting
+      progress,100.0,/reset,/last,/noprint,progstring=ps,label=label, $
+               /norecurse,/noeta,bigstep=bigstepin,smallstep=smallstepin, $
+               minval=minvalin, maxval=maxvalin
+      ncharacters = strlen(ps) ; the length of the full progress string
+      test = ''
+      ; maxch is the longest possible string computed from
+      ; ncharacters and the longest time string we're likely need
+      maxch =  ncharacters + strlen(' | Time=00000:00:00') 
+      ttysize = maxch  ; Maximum required tty width.
+      for i=1,maxch-1 do begin 
+         ; Figure out how wide the tty is.  There has got to be
+         ; a better way to do this!!!
+         ; String switches to an array when the tty line would be full.
+         test = string('a',test)  ; add one character
+         if (size(test))[0] then begin ; scalar string or string array?
+            ttysize = i ; if we never get here, the tty is bigger than we need
+            break
+         endif
+      endfor
+      ; Better way(?), but works only for some unix flavors,
+      ; so do don't want to do this.
+      ; The IDL ioctl command could also be used, but it is at least
+      ; as system dependent.
+      ; spawn,['stty','size'],result,/noshell 
+      ; ttysize=splitstr(result,' ')
+      ; ttysize = ttysize[n_elements(ttysize)-1]
+   endif
+
+   lastpercent = round(minval)-1.0   ; must be exactly round(minval)-1 at the start
+   starttime = systime(1)
+   lasttime = starttime
+   progstring = ''
+   if keyword_set(label) then begin
+      ;s = strcompress(label+': ')
+      s = label+': '
+      if NOT keyword_set(noprint) then print,s,format='(a,$)'
+      progstring = progstring + s
+   endif
+endif   ; end of initialization
+
+percent = (float(percentin) < maxval) > minval
+
+if percent LT lastpercent then return 
+
+if keyword_set(last) then npercent = round(maxval) else npercent = round(percent)
+nlastpercent = round(lastpercent)
+
+; Print whatever dots and numbers we need to
+
+nprinted = 0
+if npercent GT nlastpercent then begin
+   for ipct=nlastpercent+1,npercent do begin
+      if ipct MOD bigstep EQ 0 then begin
+         s = ' '+strcompress(string(ipct),/remove_all)+' '
+         if NOT keyword_set(noprint) then print,s,format='(a,$)' 
+         progstring = progstring + s
+         nprinted = nprinted + strlen(s)
+      endif else if ipct MOD smallstep EQ 0 then begin
+         s = '.'
+         if NOT keyword_set(noprint) then print,s,format='(a,$)'
+         progstring = progstring + s
+         nprinted = nprinted + strlen(s)
+      endif
+   endfor
+endif
+
+; Print the estimated time left
+
+if (keyword_set(nprinted) OR $
+    n_elements(frequency) GE 1 OR $
+    keyword_set(last)) AND $
+   NOT keyword_set(doreset) AND $ ; no time has passed, can't get eta
+   NOT keyword_set(noeta) then begin
+   ; Compute & print estimated time to completion
+   thistime = systime(1)
+   if (thistime - lasttime) GE freq OR $
+      keyword_set(nprinted) OR $
+      keyword_set(last) then begin
+      rpercent = float(percent-minval)/float(maxval-minval)
+      if keyword_set(last) OR rpercent EQ 0.0 then $
+         eta = (thistime-starttime) $ ; /last -> total elapsed time
+      else $
+         eta = (1.0-rpercent)*(thistime-starttime)/rpercent
+      h = fix(eta / 3600.0)
+      eta = eta - h*3600.0
+      m = fix(eta/60.0)
+      eta = eta - m*60.0
+      s = fix(eta)
+      if h LT 10 then h = '0'+string(h) else h = string(h)
+      if m LT 10 then m = '0'+string(m) else m = string(m)
+      if s LT 10 then s = '0'+string(s) else s = string(s)
+      eta = ' | Time='+strcompress(h+':'+m+':'+s,/remove_all)
+      ; Get number of spaces needed to push time string out to
+      ; where the end of the final string will be so it will
+      ; not appear to move.
+      if keyword_set(ncharacters) then $
+         nspace = ncharacters - strlen(progstring) $
+      else nspace=0
+      if strlen(progstring)+nspace+strlen(eta) GE ttysize then begin
+         ; We will eventually go over the end of the line so 
+         ; reduce number of spaces.
+         nspace = (ttysize-strlen(progstring)-strlen(eta))
+      endif
+      if nspace LT 0 then begin
+         ; We will go over the end of the line with this call,
+         ; so we need to erase the last time and move to a new 
+         ; line.
+         if NOT keyword_set(noprint) then begin
+            ; erase the last time and write
+            ; enough to get to the next line
+            nerase = strlen(eta)+nspace
+            if nerase GT 0 then $
+              print,string(replicate(32b,nerase)),format='(a,$)'
+            progstring = ''  ; starting a new line
+         endif
+      endif
+      if nspace GT 0 then spacestr = string(replicate(32b,nspace)) $
+      else spacestr = ''
+      ; 8b is a backspace so the eta will be overwritten on next call
+      eta = spacestr + eta + $
+            string(replicate(8b,strlen(eta)+strlen(spacestr)))
+      if NOT keyword_set(noprint) then print,eta,format='(a,$)'
+      lasttime = thistime  ; the last time the ETA was printed
+   endif
+endif
+
+if keyword_set(last) then begin
+   if NOT keyword_set(noprint) then print
+   lastpercent = minval-1.0  ; force a reset on the next call
+endif
+
+pstring = progstring
+lastpercent = percent
+
 end
 
 
