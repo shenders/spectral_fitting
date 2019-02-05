@@ -1,3 +1,224 @@
+Pro bindata,time,yvals,trange,avr,err
+
+	x   = moment(yvals[where(time ge trange[0] and time le trange[1])])
+	avr = x[0]
+	err = sqrt(x[1])
+
+End
+
+PRO errors,x,y,xstd=xstd,ystd=ystd,col=col,ymax=ymax,ymin=ymin,xmax=xmax,xmin=xmin,xupper=xupper,xlower=xlower
+	if keyword_set(xupper)then begin
+		for i=0,n_elements(x)-1 do oplot,[xlower[i],xupper[i]],[y[i],y[i]],col=col
+		y2 = (ymax - ymin) * 0.01
+		for i=0,n_elements(x)-1 do oplot,[xupper[i],xupper[i]],[y[i]-y2,y[i]+y2],col=col
+		for i=0,n_elements(x)-1 do oplot,[xlower[i],xlower[i]],[y[i]-y2,y[i]+y2],col=col
+	endif
+
+	if keyword_set(xstd)then begin
+		for i=0,n_elements(x)-1 do oplot,[x[i]-xstd[i],x[i]+xstd[i]],[y[i],y[i]],col=col
+		y2 = (ymax - ymin) * 0.01
+		for i=0,n_elements(x)-1 do oplot,[x[i]+xstd[i],x[i]+xstd[i]],[y[i]-y2,y[i]+y2],col=col
+		for i=0,n_elements(x)-1 do oplot,[x[i]-xstd[i],x[i]-xstd[i]],[y[i]-y2,y[i]+y2],col=col
+	endif
+	if keyword_set(ystd)then begin
+		for i=0,n_elements(x)-1 do oplot,[x[i],x[i]],[y[i]+ystd[i],y[i]-ystd[i]],col=col
+		x2 = (xmax - xmin) * 0.01
+		for i=0,n_elements(x)-1 do oplot,[x[i]-x2,x[i]+x2],[y[i]+ystd[i],y[i]+ystd[i]],col=col
+		for i=0,n_elements(x)-1 do oplot,[x[i]-x2,x[i]+x2],[y[i]-ystd[i],y[i]-ystd[i]],col=col
+	endif
+END	
+Pro augped,shot,nesep,debug=debug,xmin=xmin,xmax=xmax
+
+	if ~keyword_set(xmin)then xmin=0.98
+	if ~keyword_set(xmax)then xmax=1.02
+	dir = '/afs/ipp/home/s/shenders/augped/output/'
+	shotstr = string(shot,format='(i5)')
+	spawn,'ls '+dir,files
+	id  = where(strpos(files,shotstr) ne -1)
+	if id[0] eq -1 then stop,'No files exist with this shot number'
+	if n_elements(id) gt 1 then begin
+		for i=0,n_elements(id)-1 do print,i,': ',files[id[i]]
+		read,val,prompt='More than 1 file exists, which file (e.g. 0,1...): '
+		id = id[val] 
+	endif else val=0
+	file = files[id]
+	print,'Reading file: ',file
+	openr,unit,dir+file,/get_lun
+	txt = ''
+	itest = 0
+	x = -1.0
+	dens = -1.0
+	while ~eof(unit) do begin
+		readf,unit,txt
+		
+		check='Rmaj         rho           psi           fit           dfit'
+     		if strpos(txt,check) ne -1 and itest eq 0 then begin
+			fin = 0
+			while fin ne 1 do begin
+				readf,unit,rmaj,rho,psi,fit,dfit
+				x = [x,rho]
+				dens = [dens,fit]
+				if rho eq 1.2 then fin = 1
+			end
+			itest = 1
+		endif
+	end
+	close,unit
+	free_lun,unit
+	x = x[1:*]
+	dens = dens[1:*]
+	id = where(x ge xmin and x le xmax)
+	print,string(mean(dens[id]),format='("ne,sep= ",E8.2)')
+	if keyword_set(debug)then begin
+		plot,x,dens>0
+		oplot,[xmin,xmin],[-5e20,5e20],linest=5
+		oplot,[xmax,xmax],[-5e20,5e20],linest=5
+		oplot,[0,2],[mean(dens[id]),mean(dens[id])],linest=5
+		stop 
+	endif
+	nesep = mean(dens[id])
+END
+
+Pro deltaL,tdiv,dl,upperdl=upperdl,lowerdl=lowerdl,machine=machine,rov014=rov014
+
+	if ~keyword_Set(machine)then machine='AUG'
+	if machine eq 'AUG'then begin
+		teprof = findgen(100)/99.0 * 99.0 + 1.0
+		if keyword_set(rov014)then begin
+			set_te = [-2.0,5,40] 
+			del_l_u = interpol([0.069,0.107,0.035],$
+	 		    set_te,teprof)
+		endif else begin
+			set_te = [1.0,7.0,100]
+			del_l_u = interpol([0.069,0.107,0.035],$
+	 		    set_te,teprof)
+		end
+		del_l_l = del_l_u * 0.8
+	endif
+	
+	upperdl = interpol(del_l_u,teprof,tdiv)
+	lowerdl = interpol(del_l_l,teprof,tdiv)
+	dl = upperdl
+	for i=0,n_elements(tdiv)-1 do dl[i]=mean([upperdl[i],lowerdl[i]])
+END
+	
+PRO setgraphics,xs=xs,ys=ys,ncol=ncol,nrow=nrow,psplot=psplot,landscape=landscape,portrait=portrait,close=close,filename=filename,$
+                colors=colors,colpick=colpick,collabel=collabel,full_list=full_list
+
+	adas_colors,colors=colors
+	
+	colpick  = [colors.blue, colors.green,colors.orange,colors.red,colors.magenta]
+	collabel = ['blue', 'green','orange','red','magenta']
+	
+	if keyword_set(full_list)then begin
+		colpick = [colors.navy,colors.blue,colors.sky,colors.cyan,colors.aqua,colors.yellow,colors.gold,$
+	           colors.orange,colors.peachpuff,colors.red,colors.magenta,colors.pink,$
+		   colors.navy,colors.blue,colors.sky,colors.cyan,colors.aqua,colors.yellow,colors.gold,$
+	           colors.orange,colors.peachpuff,colors.red,colors.magenta,colors.pink,$		   
+		   colors.navy,colors.blue,colors.sky,colors.cyan,colors.aqua,colors.yellow,colors.gold,$
+	           colors.orange,colors.peachpuff,colors.red,colors.magenta,colors.pink,$		   
+		   colors.navy,colors.blue,colors.sky,colors.cyan,colors.aqua,colors.yellow,colors.gold,$
+	           colors.orange,colors.peachpuff,colors.red,colors.magenta,colors.pink,$		   
+		   colors.navy,colors.blue,colors.sky,colors.cyan,colors.aqua,colors.yellow,colors.gold,$
+	           colors.orange,colors.peachpuff,colors.red,colors.magenta,colors.pink,$		   
+		   colors.navy,colors.blue,colors.sky,colors.cyan,colors.aqua,colors.yellow,colors.gold,$
+	           colors.orange,colors.peachpuff,colors.red,colors.magenta,colors.pink,$		   
+		   colors.navy,colors.blue,colors.sky,colors.cyan,colors.aqua,colors.yellow,colors.gold,$
+	           colors.orange,colors.peachpuff,colors.red,colors.magenta,colors.pink,$		   
+		   colors.navy,colors.blue,colors.sky,colors.cyan,colors.aqua,colors.yellow,colors.gold,$
+	           colors.orange,colors.peachpuff,colors.red,colors.magenta,colors.pink,$		   
+		   colors.navy,colors.blue,colors.sky,colors.cyan,colors.aqua,colors.yellow,colors.gold,$
+	           colors.orange,colors.peachpuff,colors.red,colors.magenta,colors.pink,$		   
+		   colors.navy,colors.blue,colors.sky,colors.cyan,colors.aqua,colors.yellow,colors.gold,$
+	           colors.orange,colors.peachpuff,colors.red,colors.magenta,colors.pink,$		   
+		   colors.navy,colors.blue,colors.sky,colors.cyan,colors.aqua,colors.yellow,colors.gold,$
+	           colors.orange,colors.peachpuff,colors.red,colors.magenta,colors.pink,$		   
+		   colors.navy,colors.blue,colors.sky,colors.cyan,colors.aqua,colors.yellow,colors.gold,$
+	           colors.orange,colors.peachpuff,colors.red,colors.magenta,colors.pink,$		   
+		   colors.navy,colors.blue,colors.sky,colors.cyan,colors.aqua,colors.yellow,colors.gold,$
+	           colors.orange,colors.peachpuff,colors.red,colors.magenta,colors.pink,$		   
+		   colors.navy,colors.blue,colors.sky,colors.cyan,colors.aqua,colors.yellow,colors.gold,$
+	           colors.orange,colors.peachpuff,colors.red,colors.magenta,colors.pink]
+		collabel = ['navy','blue','sky','cyan','aqua','yellow','gold',$
+	            'orange','peachpuff','red','magenta','pink',$
+		    'navy','blue','sky','cyan','aqua','yellow','gold',$
+	            'orange','peachpuff','red','magenta','pink',$		    
+		    'navy','blue','sky','cyan','aqua','yellow','gold',$
+	            'orange','peachpuff','red','magenta','pink',$		    
+		    'navy','blue','sky','cyan','aqua','yellow','gold',$
+	            'orange','peachpuff','red','magenta','pink',$		    
+		    'navy','blue','sky','cyan','aqua','yellow','gold',$
+	            'orange','peachpuff','red','magenta','pink',$		    
+		    'navy','blue','sky','cyan','aqua','yellow','gold',$
+	            'orange','peachpuff','red','magenta','pink',$		    
+		    'navy','blue','sky','cyan','aqua','yellow','gold',$
+	            'orange','peachpuff','red','magenta','pink',$		    
+		    'navy','blue','sky','cyan','aqua','yellow','gold',$
+	            'orange','peachpuff','red','magenta','pink',$		    
+		    'navy','blue','sky','cyan','aqua','yellow','gold',$
+	            'orange','peachpuff','red','magenta','pink',$		    
+		    'navy','blue','sky','cyan','aqua','yellow','gold',$
+	            'orange','peachpuff','red','magenta','pink',$		    
+		    'navy','blue','sky','cyan','aqua','yellow','gold',$
+	            'orange','peachpuff','red','magenta','pink',$		    
+		    'navy','blue','sky','cyan','aqua','yellow','gold',$
+	            'orange','peachpuff','red','magenta','pink',$		    
+		    'navy','blue','sky','cyan','aqua','yellow','gold',$
+	            'orange','peachpuff','red','magenta','pink',$		    
+		    'navy','blue','sky','cyan','aqua','yellow','gold',$
+	            'orange','peachpuff','red','magenta','pink']	
+	endif
+	if ~keyword_set(ncol)then ncol=0
+	if ~keyword_set(nrow)then nrow=0
+	if ~keyword_set(psplot)then begin
+		window,/free,xs=xs,ys=ys
+		!p.multi=[0,nrow,ncol]
+		!p.charsize=2.0
+		!p.thick=2.0
+	endif else begin
+		if keyword_set(close)then device,/close else begin
+			if ~keyword_set(filename)then filename='output.ps'
+			!p.multi=[0,nrow,ncol]
+			!p.charsize=1.5
+			!p.font=0
+			!p.thick=6.0
+			!x.thick=6.0
+			!y.thick=6.0
+			!z.thick=6.0
+			set_plot,'ps'
+			device,color=1,xsize=xs,ysize=ys,/inches,bits_per_pixel=64,file=filename,$
+			font_size=11,landscape=landscape,portrait=portrait,/encapsulated
+		end
+	end	
+
+END
+
+
+PRO basic_fit,te_val=te_val,func=func,dens=dens,tec3995=tec3995,exc3995=exc3995,rec3995=rec3995,use402=use402
+	dens=adas_vector(high=1e15,low=1e13,num=100)
+	if ~keyword_set(te_val)then te_val=3.5
+	te = te_val+fltarr(100)
+; 399.5 line
+	read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=exc3995,block=15
+	read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=rec3995,block=65
+; 404.2 line	
+	read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=exc4042,block=21
+	read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=rec4042,block=71
+; Ionisation balance
+    	run_adas405, uid='adas', year='96', elem='n', te=te, dens=dens, frac=frac
+; Line ratio at fixed temperature	
+	tec3995 = (frac.ion[*,1] * exc3995 + frac.ion[*,2] * rec3995) 
+	tec4042 = (frac.ion[*,1] * exc4042 + frac.ion[*,2] * rec4042) 
+
+	if keyword_set(use402)then begin
+	; 402.6 line
+		read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=exc4026,block=19
+		read_adf15,file='model/atomic_data/pec98#n_ssh_pju#n1.dat',te=te,dens=dens,data=rec4026,block=69
+		tec3995 = (frac.ion[*,1] * exc4026 + frac.ion[*,2] * rec4026) 
+	endif
+	func    = tec4042 / tec3995
+	
+END
 FUNCTION cal_wav,x,y,shot,diag,spec
 
 
@@ -40,7 +261,10 @@ FUNCTION find_elm,shot,tline,emiss,psplot=psplot,plot_stats=plot_stats,binsize=b
 	tr=[min(tline),max(tline)]
 	res = tline[1]-tline[0]
 	tline=tline+res/2.0
-	read_data,'ELM',shot,f_elm,time,experiment=experiment
+;	read_data,'ELM',shot,f_elm,time,experiment=experiment
+;    	diagnostic = 'ELM'
+;	signalname = 'f_ELM'
+	read_signal_mrm,0L,shot,'ELM','f_ELM',time,f_elm,1	
 	idgtzero = WHERE(time GT 0)
 	time     = time[idgtzero]
 	f_elm    = f_elm[idgtzero]
@@ -91,7 +315,867 @@ FUNCTION find_elm,shot,tline,emiss,psplot=psplot,plot_stats=plot_stats,binsize=b
 	ENDIF
 	RETURN,telm
 END
-pro read_data,sig,shot,output,time,trange=trange,ascii=ascii,doplot=doplot,res=res,experiment = experiment,edition=edition
+pro read_signal_mrm, ier,       $
+                 shot,      $			;<-
+                 diag_name, $			;<-
+                 sig_name,  $			;<-
+                 time,      $			;->
+                 sig,       $			;-> Daten
+                 phys_dim,  $ 			;-> Physikalische Einheit
+                 edition = edition, $
+                 time_ft = time_ft, $
+                 indices = indices,  $
+                 exp=exp,   $
+		 text=text, $
+		 debug=debug
+;		 format_ext=format_ext
+
+
+ if (n_params() le 6) then begin
+	print,'usage:    read_signal, ier,shot,diag_name,sig_name,time,sig,phys_dim,edition=edition,time_ft=time_ft,indices=indices,exp=exp'
+	return
+ endif
+
+
+
+
+libddww =  '/afs/ipp/aug/ads/lib64/@sys/libddww8.so'
+
+
+
+ ;
+ ; General information about data types:
+ ;
+ ; text description:
+ format_txt = ['BYTE','CHAR','SHORT_INT','INTEGER','IEEE_FLOAT','IEEE_DOUBLE', $
+               'LOGICAL','CHAR_REAL','U_SHORT','IBM_REAL','IBM_DOUBLE', $
+               'CHAR_8','CHAR_16','CHAR_32','CHAR_48','CHAR_64','CHAR_72']
+ ; DDWW array type at return:
+ format_val = [1,2,3,4,5,6,7,8,9,10,11,1794,3842,7938,12034,16130,18178] 
+ ; type which is used for reading in IDL and translated to DDWW:
+ ;type_val   = [2,6,2,2,2,2,1,2,2, 2, 3,   6,   6,   6,    6,    6,    6]
+ type_val   = [2,6,2,2,2,3,1,2,2, 2, 3,   6,   6,   6,    6,    6,    6]
+ ; IDL array type:
+ ;array_type = [4,7,4,4,4,4,3,4,4, 4, 5,   7,   7,   7,    7,    7,    7]       
+ array_type = [4,7,4,4,4,5,3,4,4, 4, 5,   7,   7,   7,    7,    7,    7]       
+
+
+
+
+ if (keyword_set(edition) eq 0) then ed = 0l else ed = long(edition)
+  
+ shot      = long(shot)
+ ier       = 0L
+ dia_ref   = 0L
+ k1        = 0L
+ k2        = 0L
+ dim       = 0L
+ ctrl      = 3L
+ ncal      = 0L
+ ntval     = 0L
+ npretrig  = 0L
+ tbeg      = 0.0 
+ tend      = 0.0 
+ if KEYWORD_SET(exp) then begin
+    exp    = STRUPCASE(STRTRIM(exp, 2))
+ endif else begin
+    exp    = 'AUGD'
+ endelse
+ datum     = string('',format='(a18)')
+ phys_dim  = string('',format='(a12)')
+
+;_______________________________________________________________________________
+
+;OPEN SHOTFILE
+
+ s = call_external(libddww,'ddgetaug','ddopen',         $
+                   ier,exp,diag_name,shot,ed,dia_ref,datum)
+ if (ier gt 0) then begin
+    s = call_external(libddww,'ddgetaug','xxerror',ier,3L,'ddopen:       ')
+    return
+ endif
+
+    
+;GET INFORMATION
+
+ text	= '                                                                 '
+ obuf	= lonarr(26)
+ ier	= 0L
+ s = CALL_EXTERNAL(libddww,'ddgetaug','ddobjhdr', $
+                   ier,dia_ref,sig_name,obuf,text)
+ if (ier ne 0) then begin
+    s = CALL_EXTERNAL(libddww,'ddgetaug','xxerror',ier, ctrl, ' ')
+    goto, close
+ endif  
+  
+ obj_type = 0l
+ s = CALL_EXTERNAL(libddww,'ddgetaug','ddobjval', $
+                   ier,dia_ref,sig_name,'objtype',obj_type)
+ if (ier ne 0) then begin
+    s = CALL_EXTERNAL(libddww,'ddgetaug','xxerror',ier, ctrl, ' ')
+    goto, close
+ endif  
+ 
+ obj_size = 0l
+ s = CALL_EXTERNAL(libddww,'ddgetaug','ddobjval', $
+                   ier,dia_ref,sig_name,'size',obj_size)
+ if (ier ne 0) then $
+    s = CALL_EXTERNAL(libddww,'ddgetaug','xxerror',ier, ctrl, ' ')
+ k1 = 1l
+ k2 = long(obj_size)
+
+ dim_arr = lonarr(3)   
+ s = CALL_EXTERNAL (libddww,'ddgetaug','ddobjval', $
+                    ier,dia_ref,sig_name,'indices',dim_arr)
+ if (ier ne 0) then $
+    s = CALL_EXTERNAL(libddww,'ddgetaug','xxerror',ier, ctrl, ' ')
+
+ relations = lonarr(8)
+ s = CALL_EXTERNAL(libddww,'ddgetaug','ddobjval', $
+                   ier,dia_ref,sig_name,'relations',relations)
+ if (ier ne 0) then $
+    s = CALL_EXTERNAL(libddww,'ddgetaug','xxerror',ier, ctrl, ' ')
+ tmp = where(relations gt 0,count)
+
+ if (count gt 0) then begin
+
+   ;READ TIME-BASE
+
+    ;
+    ; read format of timebase:
+    ;
+    ier = 0L
+    typ = 0L
+    tname = '        '
+    ind = lonarr(4)
+    ; get timebase name for signal:
+    s = CALL_EXTERNAL(libddww,'ddgetaug','ddsinfo', $
+                   ier,dia_ref,sig_name,typ,tname,ind)
+    if (ier ne 0) then s=CALL_EXTERNAL(libddww,'ddgetaug','xxerror',ier, ctrl, ' ')
+    if(keyword_set(debug)) then print,'ddsinfo = ',s,sig_name,typ,tname,ind
+
+    ier = 0L
+    time_format = lonarr(3)
+    ; get format for timebase itself:
+    s = CALL_EXTERNAL(libddww,'ddgetaug','ddobjval', $
+                   ier,dia_ref,tname,'format',time_format)
+    if (ier ne 0) then s=CALL_EXTERNAL(libddww,'ddgetaug','xxerror',ier, ctrl, ' ')
+    time_ind = type_val(where(time_format(0) eq format_val) > 0)
+    time_type = (long(type_val(where(time_format(0) eq format_val) > 0)))(0)
+    time_arr_typ = (array_type(where(time_format(0) eq format_val) > 0))(0)
+    time_format_txt = (format_txt(where(time_format(0) eq format_val) > 0))(0)
+
+    if(keyword_set(debug)) then begin
+        print,'time_format = ',time_format
+        print, 'time_ind = ',time_ind
+        print, 'time_typ = ',time_type
+        print, 'time_arr_typ = ',time_arr_typ
+        print, 'time_format_txt = ',time_format_txt
+    endif
+
+    ier = 0L
+    _tbeg = 0.0
+    _tend = 0.0
+    _ntval = 0L
+    _npretrig = 0L
+    s = CALL_EXTERNAL (libddww,'ddgetaug','ddtrange', $
+                       ier,dia_ref,tname,_tbeg,_tend,_ntval,_npretrig)
+    if (ier ne 0) then begin
+	s = CALL_EXTERNAL (libddww,'ddgetaug','xxerror',ier,ctrl,' ')
+	goto, close
+    endif
+    if(keyword_set(debug)) then begin
+	print,'t=',_tbeg,_tend,'size=',_ntval,_npretrig
+    endif
+
+    if (keyword_set(debug)) then begin
+      _k1 = 0L
+      _k2 = 0L
+      ier = 0L
+      s = CALL_EXTERNAL (libddww,'ddgetaug','ddtindex', $
+                       ier,dia_ref,tname,_tbeg,_tend,_k1,_k2)
+;      ntval = long(k2-k1+1)
+      print,'size = ',_ntval,_k1,_k2,obj_size,_tbeg,_tend
+    endif
+;    if (keyword_set(format_ext) ) then begin
+;	case format_ext of
+;	    'float': begin
+;		time_type = 2L
+;		time_si = long([1,1,4,1])
+;		end
+;	    'double': begin
+;		time_type = 3L
+;		time_si = long([1,1,5,1])
+;		end
+;	    else: begin
+;		time_type = 2L
+;		time_si = long([1,1,4,1])
+;		end
+;	endcase
+;    endif else begin
+;	time_type = 2L
+;	time_si = long([1,1,4,1])
+;    endelse
+
+;;    max_ntval = 5000000l
+;    ier = 0L
+;    max_ntval = _ntval
+;    time_si = [1,max_ntval,time_arr_typ,max_ntval]
+;    time = make_array(size=time_si)
+;    s = CALL_EXTERNAL (libddww,'ddgetaug','ddtbase',  $
+;                       ier,dia_ref,tname,1l,max_ntval,time_type,max_ntval,time,dim)
+;    if (ier ne 0) then s = CALL_EXTERNAL (libddww,'ddgetaug','xxerror',ier,ctrl,' ')
+;    k1 = 1l
+;    tbeg = time(k1-1)
+;    tmp = max(time(0:dim-1),ntval)
+;    tend = time(ntval)
+;    ntval = long(ntval+1)
+;    k2 = ntval
+    k1		= 1L
+    k2		= long(_ntval)
+    ntval	= long(_ntval)
+    tbeg	= _tbeg
+    tend	= _tend
+    tb_index = (where(ntval eq [obj_size,dim_arr]))(0)
+    if (tb_index ne 0) then message,'Zeitbasis nicht als erster Index abgespeichert',/inform
+    if(keyword_set(debug)) then begin
+	print,'size = ',_ntval,obj_size,ntval
+	print, 'tb_index = ',where(ntval eq [obj_size,dim_arr])
+	print,'ind=',k1, k2, ntval, 'size=',obj_size, dim_arr, 'tb_index = ',tb_index
+	print, obuf
+    endif
+
+    if (keyword_set(time_ft) and (obj_size eq ntval)) then begin
+       time_ft = float(time_ft)
+       tbeg = time_ft(0) > tbeg
+       tend = tbeg > time_ft(1) < tend
+;       k1 = long((where(time ge tbeg))(0))+1l
+;       k2 = long((where(time ge tend))(0))+1l
+;       obj_size = ntval  
+       if(keyword_set(debug)) then print,'before ddtindex: t=',tbeg,tend,',ind=',k1,k2,ntval
+       s = CALL_EXTERNAL (libddww,'ddgetaug','ddtindex', $
+                          ier,dia_ref,tname,tbeg,tend,k1,k2)
+       if (ier ne 0) then s = CALL_EXTERNAL (libddww,'ddgetaug','xxerror',ier,ctrl,' ')
+       ntval = long(k2-k1+1)
+       if(keyword_set(debug)) then print,'after ddtindex: t=',tbeg,tend,',ind=',k1,k2,ntval
+    endif
+;    else begin
+;	print, 'NOT reducing time ......'
+;	k1 = 1l
+;	k2 = obj_size
+;    endelse
+
+    time_si = [1,ntval,time_arr_typ,ntval]
+    time = make_array(size=time_si)
+    s = CALL_EXTERNAL (libddww,'ddgetaug','ddtbase',  $
+                       ier,dia_ref,tname,k1,k2,time_type,ntval,time,dim)
+    if (ier ne 0) then begin
+       s = CALL_EXTERNAL(libddww,'ddgetaug','xxerror',ier, ctrl, ' ')
+       goto, close
+    endif   
+ endif else begin
+    time = indgen(obj_size)+1
+    ntval = n_elements(time)
+ endelse
+
+
+ ;
+ ; Read format type of data array
+ ; for signal or signalgroup:
+ ;
+ format = lonarr(3)
+ s = CALL_EXTERNAL(libddww,'ddgetaug','ddobjval', $
+                   ier,dia_ref,sig_name,'format',format)
+ if (ier ne 0) then s = CALL_EXTERNAL(libddww,'ddgetaug','xxerror',ier, ctrl, ' ')
+
+ ; DDWW data type:
+ type = (long(type_val(where(format(0) eq format_val) > 0)))(0)
+ ; IDL data type from / for size:
+ arr_typ = (array_type(where(format(0) eq format_val) > 0))(0)
+ ; text describtion:
+ data_format_txt = (format_txt(where(format(0) eq format_val) > 0))(0)
+
+ if(keyword_set(debug)) then begin
+	print, format
+	print, type
+	print, arr_typ
+	print, data_format_txt
+ endif
+
+
+ ;
+ ;READ DATA
+ ;
+ case obj_type of
+    
+    6 : begin  ;signalgroup
+        dim_arr = lonarr(3)   
+        s = CALL_EXTERNAL (libddww,'ddgetaug','ddobjval', $
+                           ier,dia_ref,sig_name,'indices',dim_arr)
+
+        if (keyword_set(indices)) then begin
+           indices = long(1 > [indices,1,1,1] < dim_arr)  
+;           si = [1,obj_size,arr_typ,obj_size]
+           si = [1,ntval,arr_typ,ntval]
+           sig = make_array(size=si)
+;           s = CALL_EXTERNAL (libddww,'ddgetaug','ddcxsig',    $
+;                    ier,dia_ref,sig_name,k1,k2,indices,type,obj_size,sig,dim, $
+;                    ncal,phys_dim)
+           if (tb_index eq 0) then begin
+              ;s = CALL_EXTERNAL (libddww,'ddgetaug','ddccxsig',    $
+              ;                   ier,dia_ref,sig_name,k1,k2,indices,type,ntval,sig,dim, $
+              ;                   ncal,phys_dim)
+              s = CALL_EXTERNAL (libddww,'ddgetaug','ddcxsig',    $
+                                 ier,dia_ref,sig_name,k1,k2,indices,type,ntval,sig,dim, $
+                                 ncal,phys_dim)
+           endif else begin
+              tmp = make_array(size=[1,1,arr_typ,1])
+              k11 = indices(tb_index-1)
+              indi = indices
+              for i=k1,k2 do begin
+                 indi(tb_index-1) = i                 
+                 ;s = CALL_EXTERNAL (libddww,'ddgetaug','ddccxsig',    $
+                 ;                   ier,dia_ref,sig_name,k11,k11,indi,type,1L,tmp,dim, $
+                 ;                   ncal,phys_dim)
+                 s = CALL_EXTERNAL (libddww,'ddgetaug','ddcxsig',    $
+                                    ier,dia_ref,sig_name,k11,k11,indi,type,1L,tmp,dim, $
+                                    ncal,phys_dim)
+                 sig(i-k1) = tmp(0)
+              endfor
+           endelse
+           
+        endif else begin   
+           n_el_ind = 1
+           for i=0,n_elements(dim_arr)-1 do n_el_ind = n_el_ind*dim_arr(i)
+           si=[1+n_elements(dim_arr),ntval,dim_arr,arr_typ,ntval*n_el_ind]
+           sig = make_array(size=si)
+           s = CALL_EXTERNAL (libddww,'ddgetaug','ddcsgrp',ier,    $
+           dia_ref,sig_name,k1,k2,type,ntval,sig,dim,ncal,phys_dim)
+
+;           s = CALL_EXTERNAL (libddww,'ddgetaug','ddccsgrp',ier,    $
+;                    dia_ref,sig_name,k1,k2,type,ntval,sig,dim,ncal,phys_dim)
+        endelse
+                    
+        end
+    
+    7 : begin  ;signal
+        si = [1,ntval,arr_typ,ntval]
+;        si = [1,obj_size,arr_typ,obj_size]
+        sig = make_array(size=si)
+;        s = CALL_EXTERNAL (libddww,'ddgetaug','ddcsgnl',ier,dia_ref, $
+;
+;sig_name,k1,k2,type,obj_size,sig,dim,ncal,phys_dim)
+        s = CALL_EXTERNAL (libddww,'ddgetaug','ddccsgnl',ier,dia_ref, $
+                           sig_name,k1,k2,type,ntval,sig,dim,ncal,phys_dim)
+;	my_local_len = 0l
+;        s = CALL_EXTERNAL (libddww,'ddgetaug','ddsignal',ier,dia_ref, $
+;                           sig_name,k1,k2,type,ntval,sig,my_local_len)
+        end                    
+    
+    else: begin
+	message, ' Invalid data type', /continue
+	end
+
+ endcase                         
+
+ if (ier eq 555352323) then ier=0  ;warning: no calibration
+ if (ier eq 555483394) then ier=0  ;warning: no PARAM_SET found
+ if (ier eq 555417858) then ier=0  ;warning: no PARAM_SET found
+ if (ier ne 0) then $
+    s = CALL_EXTERNAL (libddww,'ddgetaug','xxerror',ier, ctrl, ' ')
+
+close:
+
+;CLOSE SHOTFILE
+
+ ierc = 0l
+ s = CALL_EXTERNAL (libddww,'ddgetaug','ddclose',ierc, dia_ref)                   
+ if (ierc ne 0) then $
+    s = CALL_EXTERNAL (libddww,'ddgetaug','xxerror',ier, ctrl, ' ')
+    
+ edition=ed   
+
+
+return
+end
+;   read_signal.pro - read any shot file signal/-group and its timebase
+;
+;
+;	Wolfgang Suttrop, wls@slcwls
+;	E1, Tel. 1466, L6, Zi. 156
+;
+;	27-Sep-94  wls  extracted from read_cec
+;	09-Dec-94  wls	time can be any dimension (follow relations)
+;	21-Dec-94  wls	time and area base read optional,
+;			making use of DDAINFO and DDAGROUP
+;	03-Apr-98  wls  allow for time dependent area base
+;	16-Mar-99  wls	caution multiple time bases, absent signal
+
+PRO read_signal,error,diaref,name,t1,t2,data,$
+    time=time,area=area,raw=raw
+
+;	error	(<=)	libddww error code
+;	diaref	(=>)	ddww file handle, shot file must be open!
+;	name	(=>)	name of signal (group) of interest
+;	t1,t2	(=>)	desired time range
+;	data	(<=)	signal (group) data, memory allocated by 'read_signal'.
+;			'data' assumes the dimensions given in shot file
+;			exept for the time index which is sized according to
+;			the t1, t2 range specified
+;	time	(<=)	optional time base, memory allocated inside function
+;	area	(<=)	optional area base, memory allocated inside function
+;	raw	(=>)	optional keyword: if set (raw=1 or /raw) raw data is
+;			read, i.e. no calibration steps are performed. 
+;			By default, calibration is performed.
+
+; Shot file access library
+;  defsysv, '!libddww', exists=exists
+;  if exists eq 0 then defsysv, '!libddww', '/usr/ads/lib/libddww.so', 1
+
+; make sure parameters are of correct type
+    if (!VERSION.MEMORY_BITS eq 32) then begin              
+	_libddww = '/afs/ipp/aug/ads/lib/@sys/libddww.so'  
+    endif else begin                                        
+	_libddww = '/afs/ipp/aug/ads/lib64/@sys/libddww8.so'
+    endelse
+
+
+  error = LONG(error)
+  diaref = LONG(diaref)
+
+  ctrl = 3L
+  k1=0L
+  k2=0L
+  rleng = 0L
+  type = 2L
+  ncal = 0L
+
+  rname = string('',format='(a8)')
+  buf=lonarr(26)
+  rbuf=lonarr(26)
+  text=string('',format='(a80)')
+  physdim  = string('',format='(a12)')
+
+; get time interval index range
+
+; -------------------------------------------------------
+; this doen't work if time is not first dimension !!!
+;
+;  s = CALL_EXTERNAL (!libddww,'ddgetaug','ddtindex',$
+;	error, diaref, name, FLOAT(t1), FLOAT(t2), k1, k2)
+;  IF error NE 0 THEN BEGIN
+;    print, 'cannot find time interval in signal ', name
+;    error = -2L
+;    RETURN
+;  ENDIF
+; -------------------------------------------------------
+
+
+
+; get object header of this object for size & type information
+
+  s = CALL_EXTERNAL (!libddww,'ddgetaug','ddobjhdr',$
+                      error, diaref, name, buf, text)
+  IF error NE 0 THEN GOTO,quit
+;debug
+;  print,'buf  ', buf
+
+  IF buf(2) EQ -1 THEN BEGIN
+    print,'%READ_SIGNAL: signal '+name+' not found'
+    error = -1L
+    RETURN
+  ENDIF
+
+  IF buf(16) LT 1 OR buf(16) GT 4 THEN BEGIN
+    print,'%READ_SIGNAL: unsupported dimension ',buf(16),' encountered'
+    error = -1L
+    RETURN
+  ENDIF
+
+  IF buf(0) LT 6 OR buf(0) GT 7 THEN BEGIN
+    print,'%READ_SIGNAL: '+name+' must be signal or signal group'
+    error = -1L
+    RETURN
+  ENDIF
+
+  fi=[0L,0L,0L,0L]			; default index range: from start ...
+  li=LONG(reverse(buf(18:21)-1))	; ... to actual length in each dim.
+  ld=li-fi+1				; length in dimensions
+; dim=(SIZE(WHERE(ld GT 1)))(1)		; number of dimensions
+
+
+; ----------------------------------------------------------------------
+; follow all relations and read time base
+
+  ant=1   ; read area base only at one point if no time base found
+  ak1=1   ; start with 1st index
+  dim=0	  ; dimension teller
+
+  tdim = -1 ; time base dimension
+  adim = -1 ; are base dimension
+
+  FOR i=4,11 DO BEGIN
+    IF buf(i) GT 0 THEN BEGIN	; is a defined relation
+      s = CALL_EXTERNAL (_libddww,'ddgetaug','ddobjname',$
+                      error,diaref,buf(i),rname)
+      IF error NE 0 THEN GOTO,quit
+      s = CALL_EXTERNAL (_libddww,'ddgetaug','ddobjhdr',$
+                      error, diaref, rname, rbuf, text)
+      IF error NE 0 THEN GOTO,quit
+;debug
+;      print,'rbuf ', rbuf
+
+; evaluate relations
+
+      CASE rbuf(0) OF
+        8: BEGIN		
+
+; read time base array
+
+	     IF tdim LT 0 THEN BEGIN
+	       IF(ld(dim) NE rbuf(21)) THEN BEGIN
+		  print,'Time Base Dimensionen passen nicht zum Signal'
+		  print,'oder das Programm hat noch Macken'
+		  error = -2
+                  GOTO,quit
+	       ENDIF
+
+	       length = LONG (rbuf(21))
+	       k1=1L  &  k2= LONG(length)
+               time = fltarr(length)
+               s = CALL_EXTERNAL (_libddww,'ddgetaug','ddtbase', $
+                       error,diaref,rname,k1,k2,type,length,time,rleng)
+               IF error NE 0 THEN GOTO,quit
+
+; determine desired subrange
+
+	       wh=WHERE(time GE t1 AND time LE t2)
+	       IF wh(0) EQ -1 THEN BEGIN
+    	         print,'%READ_SIGNAL: signal ',name,' has time range t=',$
+		  time(0),' ... ',time(rleng-1),' s.'
+                 print,'There are NO DATA POINTS between ',t1,' s and ',t2,' s'
+	         error= -2
+	         GOTO,quit	
+	       ENDIF
+
+	       IF N_ELEMENTS(wh) NE rleng THEN BEGIN   ; adjust to subrange
+		  time = TEMPORARY(time(wh))
+	          fi(dim) = MIN(wh)
+	          li(dim) = MAX(wh)
+;	          ld(dim)=li(dim)-fi(dim)+1
+	       ENDIF
+	       ant = li(dim)-fi(dim)+1  ; # time indices for area base
+	       ak1 = fi(dim)+1          ; start time index for area base
+	       tdim = dim
+	       dim=dim+1
+	    ENDIF
+	  END   ; 8=time base
+
+       13: BEGIN
+
+; check area base dimensions
+  	     adim=0	 ; area base dimension
+  	     FOR j=0,2 DO IF rbuf(18+j) GT 0 THEN BEGIN
+		IF ld(dim) NE rbuf(18+j) THEN BEGIN
+		  print,'Area Base Dimensionen passen nicht zum Signal'
+		  print,'oder das Programm hat noch Macken'
+                  error= -2
+		  GOTO,quit
+		ENDIF
+		adim=adim+1
+		dim=dim+1
+	     ENDIF
+	   END   ; 13=area base
+
+        ELSE:  ; do nothing (yet)
+
+      ENDCASE
+    ENDIF
+  ENDFOR
+
+
+; ----------------------------------------------------------------------
+; follow all relations and read area base
+
+  FOR i=4,11 DO BEGIN
+    IF buf(i) GT 0 THEN BEGIN	; is a defined relation
+      s = CALL_EXTERNAL (_libddww,'ddgetaug','ddobjname',$
+                      error,diaref,buf(i),rname)
+      IF error NE 0 THEN GOTO,quit
+      s = CALL_EXTERNAL (_libddww,'ddgetaug','ddobjhdr',$
+                      error, diaref, rname, rbuf, text)
+      IF error NE 0 THEN GOTO,quit
+
+; evaluate relations
+
+      CASE rbuf(0) OF
+        8: BEGIN		; ignore time base here
+	   END
+
+       13: BEGIN
+
+; read area base
+	     IF KEYWORD_SET(area) THEN BEGIN
+             print,'read area base'
+             
+	       IF rbuf(21) LT ant THEN ant = 1
+               CASE adim OF 
+                 1: BEGIN 
+	              areabuf=fltarr(rbuf(18))
+	              IF ant GT 1 THEN area=fltarr(ant, rbuf(18))
+	            END
+		 2: BEGIN
+	              areabuf=fltarr(rbuf(18), rbuf(19))
+	              IF ant GT 1 THEN area=fltarr(ant, rbuf(18), rbuf(19))
+		    END
+		 3: BEGIN
+	              areabuf=fltarr(rbuf(18), rbuf(19), rbuf(20))
+	              IF ant GT 1 THEN area=fltarr(ant, rbuf(18), rbuf(19), rbuf(20))
+	 	    END
+	       ENDCASE
+	       sa=SIZE(areabuf)
+	       alength=LONG(sa((SIZE(sa))(1)-1))
+
+               FOR j=0,ant-1 DO BEGIN	; for every time index
+	         IF ant EQ 1 THEN ak=1L ELSE ak=LONG(j+ak1)
+		 s = CALL_EXTERNAL (_libddww,'ddgetaug','ddagroup', error,$
+              	      diaref, name,ak,ak,type,alength,areabuf,rleng)
+                 IF error NE 0 THEN GOTO,quit
+
+	         IF ant EQ 1 THEN area=areabuf $
+	         ELSE BEGIN
+                   CASE adim OF 
+                     1: area(j,*)=areabuf
+		     2: area(j,*,*)=areabuf
+		     3: area(j,*,*,*)=areabuf
+	           ENDCASE
+	         ENDELSE
+	       ENDFOR
+	     ENDIF
+	   END
+        ELSE:  ; do nothing
+      ENDCASE
+    ENDIF
+  ENDFOR
+
+
+
+; ------------------------------------------------
+; allocate data storage space
+
+
+  ld(0)=li(0)-fi(0)+1
+
+;  IF KEYWORD_SET(raw) AND $
+;       ((buf(0) EQ 7 AND buf(14) EQ 3)   OR   (buf(0) EQ 6 AND buf(4) EQ 0)) $
+;       THEN BEGIN
+  IF KEYWORD_SET(raw) THEN BEGIN
+    CASE buf[14] OF
+      2: BEGIN  ; character*1
+        type=6L
+        string_length = 1L ; one byte long
+        CASE buf(16) OF
+          1: data=strarr(ld(0))
+          2: data=strarr(ld(0), ld(1))
+          3: data=strarr(ld(0), ld(1), ld(2))
+          4: data=strarr(ld(0), ld(1), ld(2), ld(3))
+        ENDCASE
+        data = data + ' '
+      END
+      3: BEGIN  ; short integer
+        type=0L
+        CASE buf(16) OF
+          1: data=intarr(ld(0))
+          2: data=intarr(ld(0), ld(1))
+          3: data=intarr(ld(0), ld(1), ld(2))
+          4: data=intarr(ld(0), ld(1), ld(2), ld(3))
+        ENDCASE
+      END
+      4: BEGIN  ; long integer
+        type=1L
+        CASE buf(16) OF
+          1: data=lonarr(ld(0))
+          2: data=lonarr(ld(0), ld(1))
+          3: data=lonarr(ld(0), ld(1), ld(2))
+          4: data=lonarr(ld(0), ld(1), ld(2), ld(3))
+        ENDCASE
+      END
+      5: BEGIN  ; float
+        type=2L
+        CASE buf(16) OF
+          1: data=fltarr(ld(0))
+          2: data=fltarr(ld(0), ld(1))
+          3: data=fltarr(ld(0), ld(1), ld(2))
+          4: data=fltarr(ld(0), ld(1), ld(2), ld(3))
+        ENDCASE
+      END
+      6: BEGIN  ; double
+        type=3L
+        CASE buf(16) OF
+          1: data=dblarr(ld(0))
+          2: data=dblarr(ld(0), ld(1))
+          3: data=dblarr(ld(0), ld(1), ld(2))
+          4: data=dblarr(ld(0), ld(1), ld(2), ld(3))
+        ENDCASE
+      END
+      1794: BEGIN  ; character*8
+        type=6L
+        string_length = 8L ; eight bytes long
+        CASE buf(16) OF
+          1: data=strarr(ld(0))
+          2: data=strarr(ld(0), ld(1))
+          3: data=strarr(ld(0), ld(1), ld(2))
+          4: data=strarr(ld(0), ld(1), ld(2), ld(3))
+        ENDCASE
+        data = data + STRING('',FORMAT='(a8)')
+      END
+      3842: BEGIN  ; character*16
+        type=6L
+        string_length = 16L ; sixteen bytes long
+        CASE buf(16) OF
+          1: data=strarr(ld(0))
+          2: data=strarr(ld(0), ld(1))
+          3: data=strarr(ld(0), ld(1), ld(2))
+          4: data=strarr(ld(0), ld(1), ld(2), ld(3))
+        ENDCASE
+        data = data + STRING('',FORMAT='(a16)')
+      END
+      7938: BEGIN  ; character*32
+        type=6L
+        string_length = 32L ; thirty two bytes long
+        CASE buf(16) OF
+          1: data=strarr(ld(0))
+          2: data=strarr(ld(0), ld(1))
+          3: data=strarr(ld(0), ld(1), ld(2))
+          4: data=strarr(ld(0), ld(1), ld(2), ld(3))
+        ENDCASE
+        data = data + STRING('',FORMAT='(a32)')
+      END
+      12034: BEGIN  ; character*48
+        type=6L
+        string_length = 48L ; forty eight bytes long
+        CASE buf(16) OF
+          1: data=strarr(ld(0))
+          2: data=strarr(ld(0), ld(1))
+          3: data=strarr(ld(0), ld(1), ld(2))
+          4: data=strarr(ld(0), ld(1), ld(2), ld(3))
+        ENDCASE
+        data = data + STRING('',FORMAT='(a48)')
+      END
+      16130: BEGIN  ; character*64
+        type=6L
+        string_length = 64L ; sixty four bytes long
+        CASE buf(16) OF
+          1: data=strarr(ld(0))
+          2: data=strarr(ld(0), ld(1))
+          3: data=strarr(ld(0), ld(1), ld(2))
+          4: data=strarr(ld(0), ld(1), ld(2), ld(3))
+        ENDCASE
+        data = data + STRING('',FORMAT='(a64)')
+      END
+      18178: BEGIN  ; character*72
+        type=6L
+        string_length = 72L ; seventy two bytes long
+        CASE buf(16) OF
+          1: data=strarr(ld(0))
+          2: data=strarr(ld(0), ld(1))
+          3: data=strarr(ld(0), ld(1), ld(2))
+          4: data=strarr(ld(0), ld(1), ld(2), ld(3))
+        ENDCASE
+        data = data + STRING('',FORMAT='(a72)')
+      END
+    ENDCASE
+  ENDIF ELSE BEGIN
+    CASE buf[14] OF
+      6: BEGIN  ; double
+        type=3L
+        CASE buf(16) OF
+          1: data=dblarr(ld(0))
+          2: data=dblarr(ld(0), ld(1))
+          3: data=dblarr(ld(0), ld(1), ld(2))
+          4: data=dblarr(ld(0), ld(1), ld(2), ld(3))
+        ENDCASE
+      END
+      ELSE: BEGIN  ; float
+        type=2L
+        CASE buf(16) OF
+          1: data=fltarr(ld(0))
+          2: data=fltarr(ld(0), ld(1))
+          3: data=fltarr(ld(0), ld(1), ld(2))
+          4: data=fltarr(ld(0), ld(1), ld(2), ld(3))
+        ENDCASE
+      END
+    ENDCASE
+  ENDELSE
+
+; read signal (group) array
+
+  k1=LONG(fi(0)+1)
+  k2=LONG(li(0)+1)
+  length=LONG(ld(0))
+  IF type EQ 6L THEN length = length*string_length ; now in bytes
+
+; Here, I'm having trouble with reading the entire signal group
+; ==> try DDxtrsignal (as in ISIS) and ask Annedore!
+  IF buf(0) EQ 6 THEN   $      ; signal group
+    IF KEYWORD_SET(raw) THEN $
+      s = CALL_EXTERNAL (_libddww,'ddgetaug','ddsgroup',$
+                     error,diaref,name,k1,k2,type,length,data,rleng)  $
+    ELSE  $
+      s = CALL_EXTERNAL (_libddww,'ddgetaug','ddcsgrp',$
+            error,diaref,name,k1,k2,type,length,data,rleng,ncal,physdim) $
+
+;  IF buf[0] EQ 6 THEN BEGIN    ; signal group
+;    temp = data[*,0,0,0]
+;    FOR k = 0L, ld[3]-1 DO BEGIN
+;      FOR j = 0L, ld[2]-1 DO BEGIN
+;        FOR i = 0L, ld[1]-1 DO BEGIN
+;          indices = [i+1,j+1,k+1]
+;          IF KEYWORD_SET(raw) THEN $
+;            s = CALL_EXTERNAL (!libddww,'ddgetaug','ddxtrsignal',$
+;                               error,diaref,name,k1,k2,indices, $
+;                               type,length,temp,rleng)  $
+;          ELSE  $
+;            s = CALL_EXTERNAL (!libddww,'ddgetaug','ddcxsig',$
+;                               error,diaref,name,k1,k2,indices, $
+;                               type,length,temp,rleng,ncal,physdim)
+;          data[*,i,j,k] = temp
+;        ENDFOR
+;      ENDFOR
+;    ENDFOR
+;  ENDIF $
+
+  ELSE IF buf(0) EQ 7 THEN  $  ; signal
+    IF KEYWORD_SET(raw) THEN $
+      s = CALL_EXTERNAL (_libddww,'ddgetaug','ddsignal',$
+                     error,diaref,name,k1,k2,type,length,data,rleng)  $
+    ELSE  $
+      s = CALL_EXTERNAL (!libddww,'ddgetaug','ddcsgnl',$
+            error,diaref,name,k1,k2,type,length,data,rleng,ncal,physdim)
+
+; Ignore warnings
+    IF BYTE(error,2) EQ 1 THEN error = 0L
+;  IF    BYTE(error,0) EQ 33 $ ; DD-library
+;    AND BYTE(error,1) EQ 27 $ ; ddcsgrp
+;    AND BYTE(error,2) EQ  1 $ ; warning
+;    AND BYTE(error,3) EQ  2 $ ; "No PARAM_SET found"
+;  THEN error = 0L
+
+  IF error NE 0L THEN GOTO,quit
+
+  CASE buf(16) OF
+    1: ;
+    2: data=TEMPORARY(data(*,fi(1):li(1)))
+    3: data=TEMPORARY(data(*,fi(1):li(1),fi(2):li(2)))
+    4: data=TEMPORARY(data(*,fi(1):li(1),fi(2):li(2),fi(3):li(3)))
+ ENDCASE
+
+quit:
+  IF error GT 0 THEN $
+    s = CALL_EXTERNAL (_libddww,'ddgetaug','xxerror', error, ctrl, ' ')
+
+END
+pro read_data,sig,shot,output,time,trange=trange,diag=diag,signal=signal,ascii=ascii,doplot=doplot,res=res,experiment = experiment,edition=edition
 
 ;    if shot eq 32244 and sig eq 'ELM' then begin
 ;    	experiment = 'MBERN'
@@ -111,7 +1195,7 @@ pro read_data,sig,shot,output,time,trange=trange,ascii=ascii,doplot=doplot,res=r
     if (!VERSION.MEMORY_BITS eq 32) then begin              
 	_libddww = '/afs/ipp/aug/ads/lib/@sys/libddww.so'  
     endif else begin                                        
-	_libddww = '/afs/ipp/aug/ads/lib64/@sys/libddww.so'
+	_libddww = '/afs/ipp/aug/ads/lib64/@sys/libddww8.so'
     endelse
 
     ; Choose the right shotfile
@@ -159,13 +1243,17 @@ pro read_data,sig,shot,output,time,trange=trange,ascii=ascii,doplot=doplot,res=r
     endif	
     if sig eq 'Nrad' then begin
     	diagnostic = 'GVL'
-	signalname = 'Ne'
+	signalname = 'Ar0_7504'
     endif	
      if sig eq 'LSD' then begin
     	diagnostic = 'LSD'
 	signalname = 'ne-ua3'
     endif	
-   if ~keyword_set(edition)then edition=0L				; Last closed edition
+    
+    if keyword_set(diag)then diagnostic=diag
+    if keyword_set(signal)then signalname=signal 
+
+    if ~keyword_set(edition)then edition=1L				; Last closed edition
 
     ; Open the shotfile
     error=0L
@@ -179,11 +1267,12 @@ pro read_data,sig,shot,output,time,trange=trange,ascii=ascii,doplot=doplot,res=r
 	   error,3L,diagnostic)
 	return
     endif
+
     ; Read the timebase
 
     type=2L				; real values
     k1=1L				; Read from index 1 to 35000
-    k2=200000L				
+    k2=35000L				
     time=fltarr(k2)
     leng=0L
     result=call_external(_libddww,'ddgetaug','ddtbase', $
@@ -197,7 +1286,7 @@ pro read_data,sig,shot,output,time,trange=trange,ascii=ascii,doplot=doplot,res=r
 
     ; Read the plasmacurrent
 
-    output=fltarr(k2)
+    output=fltarr(k2,k2)
     result=call_external(_libddww,'ddgetaug','ddsignal', $
            error,diaref,signalname,k1,k2,type,k2,output,leng)
     if (error ne 0) then begin
@@ -1669,7 +2758,7 @@ pro plotimage, img0, xrange=xrange0, yrange=yrange0, $
 
   return
 end
-pro oband,x,y,err,border=border,_extra=_extra,xlog=xlog,ylog=ylog,norm=norm
+pro oband,x,y,err,border=border,_extra=_extra,xlog=xlog,ylog=ylog,norm=norm,transparent=transparent
 ;+
 ; ROUTINE:   oband
 ;
@@ -1799,11 +2888,63 @@ endif else begin
 endelse
 yyy=(ymin >= yyy) < ymax
 xxx=(xmin >= xxx) < xmax
-polyfill,xxx,yyy,_extra=_extra
+polyfill,xxx,yyy,_extra=_extra,transparent=transparent
 
 if n_elements(border) ne 0 then oplot,xxx,yyy,color=border
 
 end
+
+
+pro obandx,x,y,err,border=border,_extra=_extra,xlog=xlog,ylog=ylog,norm=norm,transparent=transparent
+;+
+; ROUTINE:   obandx
+;-
+
+if keyword_set(norm)then begin
+    x1=x
+    x2=err
+endif else begin   
+    x1=x+err
+    x2=x-err
+end
+nx1=n_elements(x1)
+nx2=n_elements(x2)
+ny=n_elements(y)
+
+if ny eq 0 then begin & xhelp,'oband' & return & end
+
+if nx1 ne ny and nx1 ne 1 then message,'array length mismatch: x1, y'
+if nx2 ne ny and nx2 ne 1 then message,'array length mismatch: x2, y'
+
+if nx1 eq 1 then xx1=replicate(x1,ny) else xx1=x1
+if nx2 eq 1 then xx2=replicate(x2,ny) else xx2=x2
+
+yyy=[y,reverse(y)]
+xxx=[xx1,reverse(xx2)]
+
+if keyword_set(ylog)then begin
+    ymax=10^!y.crange(1)
+    ymin=10^!y.crange(0)
+endif else begin
+    ymax=!y.crange(1)
+    ymin=!y.crange(0)
+endelse
+if keyword_set(xlog)then begin
+    xmax=10^!x.crange(1)
+    xmin=10^!x.crange(0)
+endif else begin
+    xmax=!x.crange(1)
+    xmin=!x.crange(0)
+endelse
+yyy=(ymin >= yyy) < ymax
+xxx=(xmin >= xxx) < xmax
+polyfill,xxx,yyy,_extra=_extra,transparent=transparent
+
+if n_elements(border) ne 0 then oplot,xxx,yyy,color=border
+
+end
+
+
 
 Function graphpos,xidx,yidx,rows,cols,xspc=xspc,yspc=yspc,xlim=xlim,ylim=ylim
 

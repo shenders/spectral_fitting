@@ -25,12 +25,16 @@ year = shot_to_year(shot)
 add = ''
 
 if not keyword_set(no_copy) then begin
-   file = '/tmp/all_spectra_'+diag+'_'+string(shot,f='(i5.5)')
+   file = '/tmp/shenders/all_spectra_'+diag+'_'+string(shot,f='(i5.5)')
+   cmd ='mkdir -p /tmp/shenders/'
+   spawn,cmd
    ;file = 'all_spectra_'+diag
    exists = file_search(file)
    if exists eq '' then new_read=1
 endif else begin
-   file = '/tmp/all_spectra_'+diag
+   file = '/tmp/shenders/all_spectra_'+diag
+   cmd ='mkdir -p /tmp/shenders/'
+   spawn,cmd
    exists = file_search(file)
    if exists eq '' then begin 
 	new_read=1
@@ -43,6 +47,7 @@ endelse
 
 if keyword_set(read_again) then new_read = 1
 
+new_read=1
 if new_read eq 1 then begin
     expmt = 'AUGD'
     if keyword_set(exp_name) then expmt = exp_name
@@ -52,14 +57,15 @@ if new_read eq 1 then begin
     endif
     if diag eq 'EVS' then begin
        if year ge 2012 then add='_2017' 
-       line = '/afs/ipp/u/sprd/EVL/evsget'+add+' '+' '''+expmt+''' '+string(shot,f='(i5.5)')
+       line = 'cd /tmp/shenders; /afs/ipp/u/sprd/EVL/evsget'+add+' '+' '''+expmt+''' '+string(shot,f='(i5.5)')
     endif
     if diag eq 'FVS' then begin
        if year ge 2012 then add='_2017' 
        line = '/afs/ipp/u/sprd/FVL/fvsget'+add+' '+' '''+expmt+''' '+string(shot,f='(i5.5)')
     endif
     if diag eq 'GVS' then begin
-       line = 'cd /tmp; /afs/ipp/u/sprd/GVL/gvsget'+add+' '+' '''+expmt+''' '+string(shot,f='(i5.5)')
+       if year ge 2012 then add='_2017' 
+       line = '/afs/ipp/u/sprd/GVL/gvsget'+add+' '+' '''+expmt+''' '+string(shot,f='(i5.5)')
     endif   
     if diag eq 'LVS' then begin
        if year ge 2014 then add='_2014'
@@ -75,21 +81,21 @@ if new_read eq 1 then begin
     endif
     if diag eq 'CDL' then begin
        if year ge 2017 then add='_2017'
-       line = 'cd /tmp; /afs/ipp/u/disp/CDM/cdlget'+add+' '+' '''+expmt+''' '+string(shot,f='(i5.5)')
+       line = 'cd /tmp/shenders; /afs/ipp/u/disp/CDM/cdlget'+add+' '+' '''+expmt+''' '+string(shot,f='(i5.5)')
     endif
     if diag eq 'CFR' then $
-       line = 'cd /tmp; /afs/ipp/u/cxrs/idl/CFR_ausw/cfrget '+' '''+expmt+''' '+string(shot,f='(i5.5)')
+       line = 'cd /tmp/shenders; /afs/ipp/u/cxrs/idl/CFR_ausw/cfrget '+' '''+expmt+''' '+string(shot,f='(i5.5)')
 
     if keyword_set(no_smear_cor) then line = line +' 0 ' else line = line + ' '
     
     spawn, line
 
     if not keyword_set(no_copy) then begin
-        line = string('mv /tmp/all_spectra_'+diag+' /tmp/all_spectra_'+diag+'_'+$
+        line = string('cp /tmp/all_spectra_'+diag+' /tmp/shenders/all_spectra_'+diag+'_'+$
                      string(shot,f='(i5.5)'))
+       print,'Keeping file'
        spawn, line
     endif
-
     exists = file_search(file)
     if exists eq '' then begin 
        error=1L

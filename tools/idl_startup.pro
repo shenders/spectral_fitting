@@ -13,6 +13,7 @@ LOADCT,5
 !path='fetch:'+!path
 !path='model:'+!path
 !path='tools:'+!path
+!path='MST:'+!path
 !path='fetch/machine:'+!path
 !path='fetch/machine/JET:'+!path
 !path='fetch/machine/AUG:'+!path

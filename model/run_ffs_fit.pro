@@ -36,7 +36,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	instr_func_str = STRTRIM(STRING(instr_func,FORMAT='(D6.3)'),2)
     	background_str = STRTRIM(STRING(backc,FORMAT='(D10.7)'),2)
     	background_up  = STRTRIM(STRING(backc*1.25,FORMAT='(D10.7)'),2)
-    	background_lw  = STRTRIM(STRING(backc*0.2,FORMAT='(D10.7)'),2)
+    	background_lw  = STRTRIM(STRING(backc*0.8,FORMAT='(D10.7)'),2)
 	IF ~KEYWORD_SET(yerr)then err  = FLTARR(N_ELEMENTS(y))+backc*0.1 ELSE err  = yerr/maxy
 ;	************************************
 ;	**** Setup MDL file             ****
@@ -73,7 +73,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	FOR i=0,ngauss-1 DO BEGIN
 	    gauss_str(i).pos   = STRTRIM(STRING(gauss.pos(i),FORMAT='(D10.5)'),2)    
 	    gauss_str(i).name  = STRCOMPRESS(STRLOWCASE(gauss.ion(i)),/REMOVE_ALL)
-	    gauss_str(i).name  = gauss_str(i).name+STRING(gauss.pos(i)*10,FORMAT='(I4)')+gauss.trn(i)
+	    gauss_str(i).name  = gauss_str(i).name+STRING(gauss.pos(i)*100,FORMAT='(I5)')+gauss.trn(i)
 	    
 	    if keyword_Set(calwave) then begin
 	    	gauss_str(i).posup = STRTRIM(STRING(gauss.pos(i)+0.1,FORMAT='(D10.5)'),2)    
@@ -152,7 +152,11 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	    IF gauss.erc(i)NE -1 THEN BEGIN
 	    str                = STRTRIM(STRING(i+1,FORMAT='(I4)'),2)
     	    PRINTF,unit_write,'(setval '+gauss_str(i).name+'.pos '+gauss_str(i).pos+')'
-	    PRINTF,unit_write,'(setlimits '+gauss_str(i).name+'.pos '+gauss_str(i).poslw+' '+gauss_str(i).posup+')'
+	    if strmid(gauss_str(i).name,0,2) eq 'xx' then begin 
+		    PRINTF,unit_write,'(fixed '+gauss_str(i).name+'.pos )'
+	    endif else begin
+		    PRINTF,unit_write,'(setlimits '+gauss_str(i).name+'.pos '+gauss_str(i).poslw+' '+gauss_str(i).posup+')'
+	    end
 	    PRINTF,unit_write,'(setval '+gauss_str(i).name+'.fwhm '+gauss_str(i).fwhm+')' 
 	    fix_fwhm=1
 	    IF fix_fwhm THEN PRINTF,unit_write,'(fixed '+gauss_str(i).name+'.fwhm )' $

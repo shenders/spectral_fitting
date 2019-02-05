@@ -5,10 +5,10 @@ if ~keyword_set(diag)then diag='EVS'
 if ~keyword_set(species)then species = 'NONE'
 
 ; Helium lines
-He_lines = [396.470 , 402.62]
-He_ions  = ['He1'   , 'He1' ]
-He_trn   = ['4p2s'  , '5d2p']
-He_cpl   = [0.00    , 0.00  ]
+;He_lines = [396.50  ,402.62  ]
+;He_ions  = ['He1'   , 'He1'  ]
+;He_trn   = ['4p2s'  ,'4p2s' ]
+;He_cpl   = [0.6     , 1.00]
 
 ; Carbon lines
 C_lines  = [406.817 , 406.914 , 407.013 , 407.219, 407.588 ]
@@ -32,10 +32,10 @@ N_cpl    = [0.00    , 0.60    , 1.00	, 2.00    , 2.378   , 1.070   , 3.00    , $
             3.85    , 0.00    , 5.0	, 4.50    , 0.0     , 0.0     , 0.0       ]
 
 ; Oxygen lines
-O_lines  = [397.30  , 398.27  , 408.82  , 408.92  , 409.29]
-O_ions   = ['O1'    , 'O1'    , 'O2'    , 'O2'    , 'O2'  ]
-O_trn    = ['3p3s'  , '3d3p'  , '4f3d'  , '4f3d'  , '4f3d']
-O_cpl    = [0.00    , 0.00    , 0.00    , 0.00    , 0.00  ]
+O_lines  = [397.30  , 398.27  ,408.92  , 409.29]
+O_ions   = ['O1'    , 'O1'    ,'O2'    , 'O2'  ]
+O_trn    = ['3p3s'  , '3d3p'  ,'4f3d'  , '4f3d']
+O_cpl    = [0.00    , 0.00    ,0.00    , 0.00  ]
 
 ; Neon lines
 Ne_lines = [ 375.120 , 370.960 , 377.710 , 373.490 , 366.410 , 376.630 , 369.420 , $
@@ -59,28 +59,64 @@ W_trn    = ['6p6s'  , '6p6s' ]
 W_cpl    = [0.00    , 0.00   ]
 
 ; Unknown lines
-X_lines  = [399.29 , 399.35 , 399.57, 396.20  , 396.89  , 399.7   , 401.38  , 401.493 , $
-            402.478 , 402.533 , 407.88  , 408.06  , 409.55 , 410.6 , 750.0 , 750.9, 751.99]
-X_ions   = strarr(n_elements(X_lines))+'xx'
-X_trn    = strarr(n_elements(X_lines))+'xxxx'
-X_cpl    = strarr(n_elements(X_lines))+0.0
-X_cpl[1:2] = [1.0, 0.65]
-
+; Put He I lines into unknown so that wavelength positions are fixed [396.50 and 402.62]
+extra_line = 0
+if keyword_set(extra_line)then begin
+	id = where(species eq 'He')
+	if id[0] ne -1 then begin	
+		X_lines  = [396.50  ,402.62, 399.29 , 399.35 , 399.57, 396.20  , 396.89  , 399.7   , 401.38  , 401.493 , $
+            	402.478 , 402.533 , 402.6, 407.88  , 408.06  , 408.82  ,409.55 , 410.6 , 750.0 , 750.9, 751.99]
+		X_ions   = strarr(n_elements(X_lines))+'xx'
+		X_trn    = strarr(n_elements(X_lines))+'xxxx'
+		X_cpl    = strarr(n_elements(X_lines))+0.0
+		X_cpl[3:4]   = [1.0, 0.65]
+		X_cpl[10:12] = [2.0, 1.69,1.45]
+		X_cpl[0:1]   = [2.6, 3.0] ; He I lines
+	endif else begin
+		X_lines  = [399.29 , 399.35 , 399.57, 396.20  , 396.89  , 399.7   , 401.38  , 401.493 , $
+            	402.478 , 402.533 , 402.6, 407.88  , 408.06  , 408.82  ,409.55 , 410.6 , 750.0 , 750.9, 751.99]
+		X_ions   = strarr(n_elements(X_lines))+'xx'
+		X_trn    = strarr(n_elements(X_lines))+'xxxx'
+		X_cpl    = strarr(n_elements(X_lines))+0.0
+		X_cpl[1:2]   = [1.0, 0.65]
+		X_cpl[8:10] = [2.0, 1.69,1.45]
+	end
+endif else begin
+	id = where(species eq 'He')
+	if id[0] ne -1 then begin	
+		X_lines  = [396.50  ,402.62, 399.29 , 399.35 , 399.57, 396.20  , 396.89  , 399.7   , 401.38  , 401.493 , $
+            	402.478 , 402.533 , 407.88  , 408.06  , 408.82  ,409.55 , 410.6 , 750.0 , 750.9, 751.99]
+		X_ions   = strarr(n_elements(X_lines))+'xx'
+		X_trn    = strarr(n_elements(X_lines))+'xxxx'
+		X_cpl    = strarr(n_elements(X_lines))+0.0
+		X_cpl[3:4]   = [1.0, 0.65]
+		X_cpl[10:11] = [2.0, 1.69]
+		X_cpl[0:1]   = [2.6, 3.0] ; He I lines
+	endif else begin
+		X_lines  = [399.29 , 399.35 , 399.57, 396.20  , 396.89  , 399.7   , 401.38  , 401.493 , $
+            	402.478 , 402.533 , 407.88  , 408.06  , 408.82  ,409.55 , 410.6 , 750.0 , 750.9, 751.99]
+		X_ions   = strarr(n_elements(X_lines))+'xx'
+		X_trn    = strarr(n_elements(X_lines))+'xxxx'
+		X_cpl    = strarr(n_elements(X_lines))+0.0
+		X_cpl[1:2] = [1.0, 0.65]
+		X_cpl[8:9] = [2.0, 1.69]
+	end
+end
 pos = 0.0
 ion = '-1'
 trn = '-1'		     
 cpl = 0.0
 
-id = where(species eq 'He')
-if id[0] ne -1 then begin
-    pos = [pos,He_lines]
-    ion = [ion,He_ions]
-    trn = [trn,He_trn]
-    max_cpl = max(cpl)
-    id = where(He_cpl > 0)
-    if id[0] ne -1 then He_cpl[id] = He_cpl[id] + max_cpl
-    cpl = [cpl,He_cpl]
-endif
+;id = where(species eq 'He')
+;if id[0] ne -1 then begin
+;    pos = [pos,He_lines]
+;    ion = [ion,He_ions]
+;    trn = [trn,He_trn]
+;    max_cpl = max(cpl)
+;    id = where(He_cpl > 0)
+;    if id[0] ne -1 then He_cpl[id] = He_cpl[id] + max_cpl
+;    cpl = [cpl,He_cpl]
+;endif
 id = where(species eq 'C')
 if id[0] ne -1 then begin
     pos = [pos,C_lines]
