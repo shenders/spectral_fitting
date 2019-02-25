@@ -35,7 +35,7 @@ Pro analysis,shot,los=los,append=append,sv=sv,sm=sm,xr=xr,$
 		  psplot=psplot,trans=trans,upperte=upperte,lowerte=lowerte,$
 		  channel=channel,use_evl=use_evl,setdens=setdens,ratio402=ratio402,$
 		  diag=diag,sig3995=sig3995,sig4041=sig4041,exp=exp,no402=no402,png=png,$
-		  time=time,cn_up=cn_up,cn_low=cn_low,debug=debug,tdiv=tdiv
+		  time=time,cn_up=cn_up,cn_low=cn_low,cn_mean=cn_mean,cn_err=cn_err,debug=debug,tdiv=tdiv
 
 
 shotstr  = string(shot,format='(i5)') 
@@ -238,6 +238,13 @@ cn_up = 3.14 * 4.0 * smooth(nii3995,sv) * transmission / (densfitu * pec3995) / 
 if keyword_set(debug)then begin
 	oband,time,(cn_up * 100)>0.1,(cn_low * 100)>0.1,/norm,col=colpick[0]
 endif
+cn_mean = fltarr(n_elements(cn_up))
+cn_err  = cn_mean
+for i=0,n_elements(cn_up)-1 do begin
+	tmp = moment([cn_up[i],cn_low[i]])
+	cn_mean[i] = tmp[0]
+	cn_err[i]  = sqrt(tmp[1])
+endfor
 if keyword_set(debug)then begin
 	id = where(time_tdiv ge xr[0] and time_tdiv le xr[1])
 	oplot,time_tdiv[id],output_tdiv[id],col=colors.red
@@ -256,6 +263,8 @@ if keyword_set(xr)then begin
 	time = time[id]
 	cn_up= cn_up[id]
 	cn_low=cn_low[id]
+	cn_mean=cn_mean[id]
+	cn_err=cn_err[id]
 	tdiv=tdiv[id]
 endif
 
