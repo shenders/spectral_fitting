@@ -31,7 +31,7 @@ Pro augped,shot,nesep,debug=debug,xmin=xmin,xmax=xmax
 
 	if ~keyword_set(xmin)then xmin=0.98
 	if ~keyword_set(xmax)then xmax=1.02
-	dir = '/afs/ipp/home/s/shenders/augped/output/'
+	dir = '/afs/ipp/home/s/shenders/augped/output_orig/'
 	shotstr = string(shot,format='(i5)')
 	spawn,'ls '+dir,files
 	id  = where(strpos(files,shotstr) ne -1)
@@ -79,20 +79,42 @@ Pro augped,shot,nesep,debug=debug,xmin=xmin,xmax=xmax
 	nesep = mean(dens[id])
 END
 
-Pro deltaL,tdiv,dl,upperdl=upperdl,lowerdl=lowerdl,machine=machine,rov014=rov014
+Pro deltaL,tdiv,dl,upperdl=upperdl,lowerdl=lowerdl,machine=machine,los=los,rov014=rov014
 
 	if ~keyword_Set(machine)then machine='AUG'
+	if ~keyword_Set(los)then los = '-'
 	if machine eq 'AUG'then begin
 		teprof = findgen(100)/99.0 * 99.0 + 1.0
-		if keyword_set(rov014)then begin
+		if los eq 'ROV-14' or los eq 'ROV014' then begin
 			set_te = [-2.0,5,40] 
 			del_l_u = interpol([0.069,0.107,0.035],$
-	 		    set_te,teprof)
+	 		                    set_te,teprof)
 		endif else begin
-			set_te = [1.0,7.0,100]
-			del_l_u = interpol([0.069,0.107,0.035],$
-	 		    set_te,teprof)
+			if los eq 'ZON-01' then begin
+				set_te = [-2.0,5,40] 
+				del_l_u = interpol([0.069,0.107,0.035]+0.05,$
+	 		                            set_te,teprof)
+			
+			endif else begin
+				if los eq 'ZON-05' then begin
+					set_te = [-2.0,5,40] 
+					del_l_u = interpol([0.069,0.107,0.035],$
+	 		                                    set_te,teprof)
+				
+				endif else begin
+					if keyword_set(rov014) then begin
+						set_te = [-2.0,5,40] 
+						del_l_u = interpol([0.069,0.107,0.035],$
+	 		                    			   set_te,teprof)					
+					endif else begin
+						set_te = [1.0,7.0,100]
+						del_l_u = interpol([0.069,0.107,0.035],$
+	 		   		                  set_te,teprof)				
+					end
+				end
+			end
 		end
+		
 		del_l_l = del_l_u * 0.8
 	endif
 	
@@ -170,24 +192,28 @@ PRO setgraphics,xs=xs,ys=ys,ncol=ncol,nrow=nrow,psplot=psplot,landscape=landscap
 	endif
 	if ~keyword_set(ncol)then ncol=0
 	if ~keyword_set(nrow)then nrow=0
-	if ~keyword_set(psplot)then begin
+	if ~keyword_set(psplot) and ~keyword_set(close) then begin
 		window,/free,xs=xs,ys=ys
 		!p.multi=[0,nrow,ncol]
 		!p.charsize=2.0
 		!p.thick=2.0
 	endif else begin
-		if keyword_set(close)then device,/close else begin
-			if ~keyword_set(filename)then filename='output.ps'
-			!p.multi=[0,nrow,ncol]
-			!p.charsize=1.5
-			!p.font=0
-			!p.thick=6.0
-			!x.thick=6.0
-			!y.thick=6.0
-			!z.thick=6.0
-			set_plot,'ps'
-			device,color=1,xsize=xs,ysize=ys,/inches,bits_per_pixel=64,file=filename,$
-			font_size=11,landscape=landscape,portrait=portrait,/encapsulated
+		if keyword_set(close) and keyword_set(psplot) then device,/close else begin
+			if keyword_set(psplot)then begin
+				if ~keyword_set(filename)then filename='output.ps'
+				!p.multi=[0,nrow,ncol]
+				!p.charsize=2.0
+				!p.font=0
+				!p.thick=6.0
+				!x.thick=6.0
+				!y.thick=6.0
+				!z.thick=6.0
+				set_plot,'ps'
+				if xs gt 100 then xs=xs/100
+				if ys gt 100 then ys=ys/100
+				device,color=1,xsize=xs,ysize=ys,/inches,bits_per_pixel=64,file=filename,$
+				font_size=11,landscape=landscape,portrait=portrait,/encapsulated
+			endif
 		end
 	end	
 

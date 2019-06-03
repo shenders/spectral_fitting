@@ -13,6 +13,7 @@ LOADCT,5
 !path='fetch:'+!path
 !path='model:'+!path
 !path='tools:'+!path
+!path='abel:'+!path
 !path='MST:'+!path
 !path='fetch/machine:'+!path
 !path='fetch/machine/JET:'+!path
@@ -23,3 +24,5 @@ print,'Start by running eg. AUG:'
 print,"IDL> x=fetch_data(35158,'ROV-12',tr=[2.0,6.2],machine='AUG',diag='EVS')"
 print,' For more info readme.txt'
 print,'************************************************'
+defsysv, '!libkk', '/afs/ipp/aug/ads/lib64/@sys/libkk.so', 1
+defsysv, '!libddww', '/afs/ipp/aug/ads/lib64/@sys/libddww8.so', 1
