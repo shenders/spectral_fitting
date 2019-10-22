@@ -1,3 +1,52 @@
+Function graphpos,xidx,yidx,rows,cols,xspc=xspc,yspc=yspc,xlim=xlim,ylim=ylim
+
+    if ~keyword_set(xlim)then xlim = [0.1,0.9]
+    if ~keyword_set(ylim)then ylim = [0.15,0.9]
+    if ~keyword_set(xspc)then xspc = 0.00
+    if ~keyword_set(yspc)then yspc = 0.00
+    xdif = xlim[1]-xlim[0]-xspc*(cols-1)
+    ydif = ylim[1]-ylim[0]-yspc*(rows-1)
+    tgrp = rows * cols
+    xdiv = xdif / cols
+    ydiv = ydif / rows
+    x0   = xlim[0] + xdiv * xidx + xspc * xidx
+    x1   = x0 + xdiv
+    y1   = 1.0 - (ylim[0] + ydiv * yidx + yspc * yidx)
+    y0   = y1 - ydiv
+return,[x0,y0,x1,y1]
+end
+Pro legend,text,col,yshift=yshift,xshift=xshift
+	if ~keyword_set(yshift)then yshift=0.0
+	if ~keyword_set(xshift)then xshift=0.0
+	xr = !x.crange
+	yr = !y.crange	
+	y0 = yr[0]+(yr[1] - yr[0])*(0.8+yshift)
+	x0 = xr[0]+(xr[1] - xr[0])*(0.7+xshift)
+	xyouts,x0,y0,text,col=col,charsize=1.4
+
+End
+Function calc_cn,shot,los,transmission,te,dens,data,sm,err=err_1
+
+	atomdb,te,dens,tec3995=tec3995
+	dl = length(data.tdiv,shot,los,upperdl=upperdl,lowerdl=lowerdl)
+	cn = smooth(data.nii3995,sm,/edge_truncate) * transmission /( tec3995 * dens * dl) / (dens * 1e6) / dl
+	return,cn
+	
+End
+
+Function r2,x,y,b=b,m=m	
+	xsum = total(x)
+	ysum = total(y)
+	xysum=0.0 & for i=0,n_elements(x)-1 do xysum = xysum + x[i]*y[i]
+	xsqr=0.0 & for i=0,n_elements(x)-1 do xsqr = xsqr + x[i]^2
+	ysqr=0.0 & for i=0,n_elements(x)-1 do ysqr = ysqr + y[i]^2
+	N  = n_elements(x)
+	m  = (N*xysum -xsum*ysum)/(N*xsqr-xsum*xsum)
+	b  = (xsqr*ysum - xsum*xysum)/(N*xsqr-xsum*xsum)
+	r2 = (N*xysum - xsum*ysum)^2/( (N*xsqr - xsum*xsum)*(N*ysqr-ysum*ysum))
+	return,r2
+End
+
 Pro bindata,time,yvals,trange,avr,err
 
 	x   = moment(yvals[where(time ge trange[0] and time le trange[1])])
@@ -6,7 +55,14 @@ Pro bindata,time,yvals,trange,avr,err
 
 End
 
-PRO errors,x,y,xstd=xstd,ystd=ystd,col=col,ymax=ymax,ymin=ymin,xmax=xmax,xmin=xmin,xupper=xupper,xlower=xlower
+PRO errors,x,y,xstd=xstd,ystd=ystd,col=col,xupper=xupper,xlower=xlower
+
+    	ymax=!y.crange(1)
+    	ymin=!y.crange(0)
+
+    	xmax=!x.crange(1)
+    	xmin=!x.crange(0)
+
 	if keyword_set(xupper)then begin
 		for i=0,n_elements(x)-1 do oplot,[xlower[i],xupper[i]],[y[i],y[i]],col=col
 		y2 = (ymax - ymin) * 0.01
@@ -27,11 +83,11 @@ PRO errors,x,y,xstd=xstd,ystd=ystd,col=col,ymax=ymax,ymin=ymin,xmax=xmax,xmin=xm
 		for i=0,n_elements(x)-1 do oplot,[x[i]-x2,x[i]+x2],[y[i]-ystd[i],y[i]-ystd[i]],col=col
 	endif
 END	
-Pro augped,shot,nesep,debug=debug,xmin=xmin,xmax=xmax
+Pro augped,shot,nesep,tesep,nesep_err,tesep_err,debug=debug,xmin=xmin,xmax=xmax
 
-	if ~keyword_set(xmin)then xmin=0.98
-	if ~keyword_set(xmax)then xmax=1.02
-	dir = '/afs/ipp/home/s/shenders/augped/output_orig/'
+	if ~keyword_set(xmin)then xmin=0.999
+	if ~keyword_set(xmax)then xmax=1.001
+	dir = '/afs/ipp/home/s/shenders/augped/output/'
 	shotstr = string(shot,format='(i5)')
 	spawn,'ls '+dir,files
 	id  = where(strpos(files,shotstr) ne -1)
@@ -48,25 +104,43 @@ Pro augped,shot,nesep,debug=debug,xmin=xmin,xmax=xmax
 	itest = 0
 	x = -1.0
 	dens = -1.0
+	te = -1.0
+	dens_err = -1.0
+	te_err = -1.0
 	while ~eof(unit) do begin
 		readf,unit,txt
-		
-		check='Rmaj         rho           psi           fit           dfit'
-     		if strpos(txt,check) ne -1 and itest eq 0 then begin
+		check='Fit to: Te'
+		if strpos(txt,check) ne -1 then begin
+			for i=0,2 do readf,unit,txt
 			fin = 0
 			while fin ne 1 do begin
 				readf,unit,rmaj,rho,psi,fit,dfit
 				x = [x,rho]
-				dens = [dens,fit]
+				te = [te,fit]
+				te_err = [te_err,dfit]
 				if rho eq 1.2 then fin = 1
 			end
-			itest = 1
-		endif
+		endif		
+		check='Fit to: ne'
+		if strpos(txt,check) ne -1 then begin
+			for i=0,2 do readf,unit,txt
+			fin = 0
+			while fin ne 1 do begin
+				readf,unit,rmaj,rho,psi,fit,dfit
+				dens = [dens,fit]
+				dens_err = [dens_err,dfit]
+				if rho eq 1.2 then fin = 1
+			end
+		endif		
+
 	end
 	close,unit
 	free_lun,unit
 	x = x[1:*]
 	dens = dens[1:*]
+	te = te[1:*]
+	dens_err = dens_err[1:*]
+	te_err = te_err[1:*]
 	id = where(x ge xmin and x le xmax)
 	print,string(mean(dens[id]),format='("ne,sep= ",E8.2)')
 	if keyword_set(debug)then begin
@@ -74,9 +148,13 @@ Pro augped,shot,nesep,debug=debug,xmin=xmin,xmax=xmax
 		oplot,[xmin,xmin],[-5e20,5e20],linest=5
 		oplot,[xmax,xmax],[-5e20,5e20],linest=5
 		oplot,[0,2],[mean(dens[id]),mean(dens[id])],linest=5
+		oplot,x[id],dens[id],thick=4,psym=5
 		stop 
 	endif
 	nesep = mean(dens[id])
+	Tesep = mean(te[id])
+	nesep_err = mean(dens_err[id])
+	Tesep_err = mean(te_err[id])
 END
 
 Pro deltaL,tdiv,dl,upperdl=upperdl,lowerdl=lowerdl,machine=machine,los=los,rov014=rov014
@@ -194,7 +272,7 @@ PRO setgraphics,xs=xs,ys=ys,ncol=ncol,nrow=nrow,psplot=psplot,landscape=landscap
 	if ~keyword_set(nrow)then nrow=0
 	if ~keyword_set(psplot) and ~keyword_set(close) then begin
 		window,/free,xs=xs,ys=ys
-		!p.multi=[0,nrow,ncol]
+		!p.multi=[0,ncol,nrow]
 		!p.charsize=2.0
 		!p.thick=2.0
 	endif else begin
@@ -290,14 +368,19 @@ FUNCTION find_elm,shot,tline,emiss,psplot=psplot,plot_stats=plot_stats,binsize=b
 ;	read_data,'ELM',shot,f_elm,time,experiment=experiment
 ;    	diagnostic = 'ELM'
 ;	signalname = 'f_ELM'
-	read_signal_mrm,0L,shot,'ELM','f_ELM',time,f_elm,1	
-	idgtzero = WHERE(time GT 0)
-	time     = time[idgtzero]
-	f_elm    = f_elm[idgtzero]
-	
-	idelms           = WHERE(time GE tr[0] AND time LE tr[1])
-	time             = time[idelms]
-	elmtime          = time
+	file = '~/data/elms/'+string(shot,format='(i5)')
+	if file_test(file)then begin
+		restore,file,/verb
+		elmtime=telm
+	endif else begin	
+		read_signal_mrm,0L,shot,'ELM','f_ELM',time,f_elm,1	
+		idgtzero = WHERE(time GT 0)
+		time     = time[idgtzero]
+		f_elm    = f_elm[idgtzero]
+		idelms           = WHERE(time GE tr[0] AND time LE tr[1])
+		time             = time[idelms]
+		elmtime          = time
+	end
 	telm             = FLTARR(n_elements(tline))
 	time_to_next_elm = FLTARR(n_elements(tline))
 	FOR i=0,N_ELEMENTS(tline)-1 DO BEGIN
@@ -2968,26 +3051,6 @@ polyfill,xxx,yyy,_extra=_extra,transparent=transparent
 
 if n_elements(border) ne 0 then oplot,xxx,yyy,color=border
 
-end
-
-
-
-Function graphpos,xidx,yidx,rows,cols,xspc=xspc,yspc=yspc,xlim=xlim,ylim=ylim
-
-    if ~keyword_set(xlim)then xlim = [0.1,0.9]
-    if ~keyword_set(ylim)then ylim = [0.15,0.9]
-    if ~keyword_set(xspc)then xspc = 0.05
-    if ~keyword_set(yspc)then yspc = 0.05
-    xdif = xlim[1]-xlim[0]-xspc*(cols-1)
-    ydif = ylim[1]-ylim[0]-yspc*(rows-1)
-    tgrp = rows * cols
-    xdiv = xdif / cols
-    ydiv = ydif / rows
-    x0   = xlim[0] + xdiv * xidx + xspc * xidx
-    x1   = x0 + xdiv
-    y1   = 1.0 - (ylim[0] + ydiv * yidx + yspc * yidx)
-    y0   = y1 - ydiv
-return,[x0,y0,x1,y1]
 end
 
 
