@@ -524,6 +524,10 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	IF KEYWORD_SET(debug)THEN BEGIN
     	    for ii=0,n_elements(parvalsfree)-1 do print,parnames_err(ii),parvalsfree(ii),orig_parvalsfree(ii)
 	    if keyword_set(nomodel)then begin
+		print,'N II line ratio details:'
+		print,'4041/3995: ',n_404_int/n_399_int
+		print,'4041/4026: ',n_404_int/n_402_int
+		
 		IF nvoigt NE 0 THEN BEGIN
 		    PRINT,'Balmer Feature Details:'
 	    	    id_check=where(parnames_err EQ 'd.dens')

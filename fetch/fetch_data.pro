@@ -20,7 +20,9 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 			  kt3a=kt3a,$
 			  save=save,$
 			  load=load,$
-			  append=append
+			  append=append,$
+			  quick=quick,$
+			  stark=stark
 			  
 			  
     	!QUIET=1
@@ -226,52 +228,14 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 ;	*************************************************************
 
 	    	    	    	IF KEYWORD_SET(backc)THEN useback=backc
-;	*************************************************************
-;	**** Fit full spectra              ****
-;	*************************************************************
-				IF KEYWORD_SET(fitall)THEN BEGIN
-					if ~keyword_set(range)then nii_range=[0,10000] else nii_range=range 
-					id = WHERE(wavelength GT nii_range[0] and wavelength lt nii_range[1] )
-					IF keyword_set(calwave)then test=cal_wav(wavelength[id],emissivity[id],shotstr,diag)
-					id_reduce_gauss=WHERE(gauss.pos LE MAX(wavelength[id])and gauss.pos GE MIN(wavelength[id]))
-					id_reduce_voigt=WHERE(voigt.pos LE MAX(wavelength[id])and voigt.pos GE MIN(wavelength[id]))
-					gauss_new = {pos:gauss.pos[id_reduce_gauss],$
-				             ion:gauss.ion[id_reduce_gauss],$
-					     couple:gauss.couple[id_reduce_gauss],$
-					     trn:gauss.trn[id_reduce_gauss],$
-					     fwhm:gauss.fwhm,$
-					     erc:gauss.erc,diag:gauss.diag}
-					gauss_use_1=gauss_new
-					if ~keyword_set(fitback)then fixback=0 else fixback=abs(1-fitback)
-					if id_reduce_voigt[0] ne -1 then begin
-						voigt_new = {pos:voigt.pos[id_reduce_voigt],$
-					             fwhml:voigt.fwhml[id_reduce_voigt],$
-					             fwhmg:voigt.fwhmg,$
-						     couple:voigt.couple[id_reduce_voigt],$
-					     		nbalmer:voigt.nbalmer[id_reduce_voigt]}
-						voigt_use_1=voigt_new
-						params_1= run_ffs_fit(wavelength[id],emissivity[id],yerr=yerror[id],$
-		                                      mdlfile=mdlfile,background=useback,fixback=fixback,$
-						      instr_func=data.instr_func,debug=debug,voigt=voigt_use_1,$
-				                      gauss=gauss_use_1,psplot=psplot,/nomodel,use_tau=use_tau)
-					endif else $
-						params_1= run_ffs_fit(wavelength[id],emissivity[id],yerr=yerror[id],mdlfile=mdlfile,$
-								 background=useback,fixback=fixback,instr_func=data.instr_func,debug=debug,$
-				                                 gauss=gauss_use_1,psplot=psplot,/nomodel,use_tau=use_tau)
-					ari_time(j,i,0)     = params_1.ari  
-					ari_time_err(j,i,0) = params_1.ari_err  
-					ari_time(j,i,1)     = params_1.ari2  
-					ari_time_err(j,i,1) = params_1.ari2_err  
-					
-					goto,skipnext
-				ENDIF
+
 ;	*************************************************************
 ;	**** Fit spectra over 398 < lambda < 409 nm              ****
 ;	*************************************************************
 
-				if mean(wavelength) gt 400 and mean(wavelength) lt 410 then nii_range=[399,409] else nii_range=[459,462.5]
-				nii_range=[396,403.5] 
-				nii_range=[401,411] 
+				nii_range=[395,411] 
+				if keyword_set(quick)then nii_range=[398,406] 
+				if keyword_set(stark)then nii_range=[406,411] 
 				if keyword_set(calwave)then nii_range=[0,1000] 
 				id = WHERE(wavelength GT nii_range[0] and wavelength lt nii_range[1] )
 				IF keyword_set(calwave)then test=cal_wav(wavelength,emissivity,shotstr,diag)
@@ -315,84 +279,24 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 				nii_time_err(j,i,3)  = params_1.n408_err    
 				nii_time(j,i,4)      = params_1.n409   
 				nii_time_err(j,i,4)  = params_1.n409_err 
+				nii_time(j,i,0)      = params_1.n399  
+				nii_time_err(j,i,0)  = params_1.n399_err  
+				hi_time(j,i,0)       = params_1.h72
+				hi_time_err(j,i,0)   = params_1.h72_err
+				niii_time(j,i,1)     = params_1.niii2  
+				niii_time_err(j,i,1) = params_1.niii2_err  
+				nii_time(j,i,1)      = params_1.n404  
+				nii_time_err(j,i,1)  = params_1.n404_err  
+				nii_time(j,i,2)      = params_1.n402  
+				nii_time_err(j,i,2)  = params_1.n402_err  
+				wi_time(j,i,0)       = params_1.nwi
+				niv_time(j,i,0)      = params_1.nvi
+				wi_time_err(j,i,0)   = params_1.nwi_err
+				niv_time_err(j,i,0)  = params_1.nvi_err
+				nv_time(j,i,0)       = params_1.nv
+				nv_time_err(j,i,0)   = params_1.nv_err
 								      
-;	*************************************************************
-;	**** Fit spectra over 396 < lambda < 400.5 nm            ****
-;	*************************************************************
-				;IF mean(wavelength) gt 400 and mean(wavelength) lt 410 then begin
-				id = WHERE(wavelength gt 394.5 and wavelength lt 406.5 ) 
-				id_reduce_gauss=WHERE(gauss.pos LE MAX(wavelength[id])and gauss.pos GE MIN(wavelength[id]))
-				gauss_new = {pos:gauss.pos[id_reduce_gauss],$
-				             ion:gauss.ion[id_reduce_gauss],$
-					     couple:gauss.couple[id_reduce_gauss],$
-					     trn:gauss.trn[id_reduce_gauss],$
-					     fwhm:gauss.fwhm,$
-					     erc:gauss.erc,diag:gauss.diag}
-				id_reduce_voigt=WHERE(voigt.pos LE MAX(wavelength[id])and voigt.pos GE MIN(wavelength[id]))
-				
-				voigt_new = {pos:voigt.pos[id_reduce_voigt],$
-				             fwhml:voigt.fwhml[id_reduce_voigt],$
-				             fwhmg:voigt.fwhmg,$
-					     couple:voigt.couple[id_reduce_voigt],$
-					     nbalmer:voigt.nbalmer[id_reduce_voigt]}
-				if id_reduce_gauss[0] ne -1 then gauss_use_2=gauss_new
-				if id_reduce_voigt[0] ne -1 then voigt_use_2=voigt_new
-				newnorm         = max(emissivity[id])
-				params_2        = run_ffs_fit(wavelength[id],emissivity[id],yerr=yerror[id],$
-				                              mdlfile=mdlfile,instr_func=data.instr_func,debug=debug,$
-							      gauss=gauss_use_2,voigt=voigt_use_2,use_tau=use_tau,$
-				                              background=(params_1.background[0]*params_1.norm)/newnorm,$
-							      fixback=1,psplot=psplot,/nomodel)
-;	*************************************************************
-;	**** Store N II 399 and Stark density                    ****
-;	*************************************************************
-				
-				nii_time(j,i,0)      = params_2.n399  
-				nii_time_err(j,i,0)  = params_2.n399_err  
-				hi_time(j,i,0)       = params_2.h72
-				hi_time_err(j,i,0)   = params_2.h72_err
-				niii_time(j,i,1)     = params_2.niii2  
-				niii_time_err(j,i,1) = params_2.niii2_err  
-				nii_time(j,i,1)      = params_2.n404  
-				nii_time_err(j,i,1)  = params_2.n404_err  
-				nii_time(j,i,2)      = params_2.n402  
-				nii_time_err(j,i,2)  = params_2.n402_err  
-				wi_time(j,i,0)       = params_2.nwi
-				niv_time(j,i,0)      = params_2.nvi
-				wi_time_err(j,i,0)   = params_2.nwi_err
-				niv_time_err(j,i,0)  = params_2.nvi_err
-				nv_time(j,i,0)       = params_2.nv
-				nv_time_err(j,i,0)   = params_2.nv_err
-				
 
-;	*************************************************************
-;	**** Store N II 408 and 409 lines                        ****
-;	*************************************************************
-				
-    	    	    	    	IF KEYWORD_SET(debug)THEN BEGIN
-				    IF KEYWORD_SET(psplot)THEN makeps,file='overview_spectra.ps',xs=8,ys=5
-				    PRINT,'Ratio 404/399:', nii_time(j,i,1)/nii_time(j,i,0)
-				    PRINT,'Ratio 404/402:', nii_time(j,i,1)/nii_time(j,i,2)
-				    PRINT,'Ratio 408/399:', nii_time(j,i,3)/nii_time(j,i,0)
-				    PRINT,'Ratio 404/408:', nii_time(j,i,1)/nii_time(j,i,3)
-				    PRINT,'Ratio 404/409:', nii_time(j,i,1)/nii_time(j,i,4)
-				    PRINT,'Ratio 402/399:', nii_time(j,i,2)/nii_time(j,i,0)
-				    PRINT,'Ratio 400/410:', niii_time(j,i,1)/niii_time(j,i,0)
-				    adas_colors,colors=colors
-    	    	    	    	    !p.thick=1.0
-				    plot,wavelength,emissivity,/ylog,xs=1,BACK=255,COL=0 ,xr=[396,MAX(wavelength)], YR=[1e16,1e20]  ,thick=2.0  
-				    id = WHERE(params_1.wavelength ge MAX(params_2.wavelength) )
-				    oplot,params_1.wavelength[id],params_1.gaussians[id]*params_1.norm,col=colors.red
-    	    	    	    	    ;oplot,params_3.wavelength,params_3.gaussians*params_3.norm,col=colors.red
-    	    	    	    	    oplot,params_2.wavelength,params_2.gaussians*params_2.norm,col=colors.red
-    	    	    	    	    oplot,params_2.wavelength,params_2.balmerfit*params_2.norm,col=colors.blue
-    	    	    	    	    ;oplot,params_3.wavelength,params_3.balmerfit*params_3.norm,col=colors.blue
-    	    	    	    	    oplot,params_1.wavelength[id],params_1.fitted[id]*params_1.norm,col=colors.green
-   	    	    	    	    oplot,params_2.wavelength,params_2.fitted*params_2.norm,col=colors.green
-    	    	    	    	    ;oplot,params_3.wavelength,params_3.fitted*params_3.norm,col=colors.green
-				    PRINT,'Time: ',timeavr
-				    stop
-				ENDIF
 				skipnext:
 ;	*************************************************************
 ;	**** Fit full N II spectra to determine Te and ne        ****
@@ -400,6 +304,7 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 				
 				ires       = 0
 			    	emissivity = 0.0
+			    	yerror     = 0.0
 			    	IF icount EQ 0 THEN progress,0.0,/reset,label='Progress (%)',frequency=1.0
 		    	    	icount     = icount + 1
 		    	    	progress,100.0*icount/icount_total

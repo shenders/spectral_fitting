@@ -91,7 +91,7 @@ if new_read eq 1 then begin
     spawn, line
 
     if not keyword_set(no_copy) then begin
-        line = string('cp /tmp/all_spectra_'+diag+' /tmp/shenders/all_spectra_'+diag+'_'+$
+        line = string('mv /tmp/all_spectra_'+diag+' /tmp/shenders/all_spectra_'+diag+'_'+$
                      string(shot,f='(i5.5)'))
        print,'Keeping file'
        spawn, line

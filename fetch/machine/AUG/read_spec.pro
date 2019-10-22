@@ -25,18 +25,7 @@ if n_params() eq 0 then begin
     return
 endif
 
-if !VERSION.MEMORY_BITS eq 32 then $
-  defsysv,'!libddww','/afs/ipp/aug/ads/lib/@sys/libddww.so' 
-if !VERSION.MEMORY_BITS eq 32 then $
-  defsysv,'!libsfh' ,'/afs/ipp/aug/ads/lib/@sys/libsfh.so'  
-if !VERSION.MEMORY_BITS eq 32 then $
-  defsysv,'!libkk'  ,'/afs/ipp/aug/ads/lib/@sys/libkk.so'   
-if !VERSION.MEMORY_BITS eq 64 then $
-  defsysv,'!libddww','/afs/ipp/aug/ads/lib64/@sys/libddww8.so' 
-if !VERSION.MEMORY_BITS eq 64 then $
-  defsysv,'!libsfh' ,'/afs/ipp/aug/ads/lib64/@sys/libsfh8.so'  
-if !VERSION.MEMORY_BITS eq 64 then $
-  defsysv,'!libkk'  ,'/afs/ipp/aug/ads/lib64/@sys/libkk.so'
+libddww='/afs/ipp/aug/ads/lib64/@sys/libddww8.so' 
 
 filename = getenv(diag+'_PATH')+'all_spectra_'+diag+'_'+string(shot,f='(i5.5)')
 if keyword_set(netcdf) then filename += '.ncdf' else filename += '.sav'
@@ -56,7 +45,7 @@ IF exist eq '' THEN BEGIN
   stop      = 0
   
 ;; open shotfile
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddopen', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddopen', $
                     error, exp, diag, shot, edt, dia_ref, date)
   
   if error ne 0 then begin
@@ -75,7 +64,7 @@ IF exist eq '' THEN BEGIN
   pname = 'PARAM' 
   if diag eq 'LVS' then begin
       sfh_type = 0L
-      s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+      s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                         error, dia_ref, pname, 'SFH_TYPE', $
                         1L, 1L, sfh_type, phys_unit)
       if sfh_type ne 5 then begin
@@ -88,7 +77,7 @@ IF exist eq '' THEN BEGIN
       endif
   endif 
   slit = 0.
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'SLIT', $
                     2L, 1L, slit, phys_unit)
   
@@ -114,16 +103,16 @@ IF exist eq '' THEN BEGIN
   endif
 
   op_ang = 0.
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'OP_ANG', $
                     2L, 1L, op_ang, phys_unit)
 
   foc_len = 0.
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'FOC_LEN', $
                     2L, 1L, foc_len, phys_unit)
   if error ne 0 then begin
-      s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+      s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                         error, dia_ref, pname, 'FOC_LEN1', $
                         2L, 1L, foc_len, phys_unit)
       if error ne 0 then ddww_error, error, 'FOC_LEN'
@@ -132,7 +121,7 @@ IF exist eq '' THEN BEGIN
   if diag eq 'BES' and shot gt 30150 then foc_len = 1.002402
 
   pixw = 13.
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'PIXW', $
                     2L, 1L, pixw, phys_unit)
   if diag eq 'DVS' and shot le 30150 then pixw = 7.735
@@ -140,30 +129,30 @@ IF exist eq '' THEN BEGIN
   if diag eq 'BES' then pixh = pixw*200./150. else pixh = pixw
 
   em_gain = 1L
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'EM-GAIN', $
                     1L, 1L, em_gain, phys_unit)
 
   ad_gain = 1L
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'AD-GAIN', $
                     1L, 1L, ad_gain, phys_unit)
 
   dyn_range = 16L
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'DynRange', $
                     1L, 1L, dyn_range, phys_unit)
 
   delta_h = 0.
   if shot gt 99999 then $
-    s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+    s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                       error, dia_ref, pname, 'DELTA_H', $
                       2L, 1L, delta_h, phys_unit)
   if diag eq 'BES' and (shot lt 15000 or shot gt 27401) then $
     delta_h = -10.8
 
   blende = 1.
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'BLENDE_1', $
                     2L, 1L, blende, phys_unit)
   
@@ -177,11 +166,11 @@ IF exist eq '' THEN BEGIN
   endif
 
   ctsph = 0.
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'CTS_PHOT', $
                     2L, 1L, ctsph, phys_unit)
   sad2 = 0.
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'SDEV_AD', $
                     2L, 1L, sad2, phys_unit)
   if diag eq 'LVS' and em_gain eq 0 then begin
@@ -196,7 +185,7 @@ IF exist eq '' THEN BEGIN
   endif 
 
   mode = 2
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'MODE', $
                     11L, 1L, mode, phys_unit)
   
@@ -208,7 +197,7 @@ IF exist eq '' THEN BEGIN
       sname = 'GRATCONS'
   endelse 
   gratcons = 0.
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, sname, $
                     2L, 1L, gratcons, phys_unit)
 
@@ -223,7 +212,7 @@ IF exist eq '' THEN BEGIN
       sname = 'WAVELEN'
   endif 
   lam0 = 0.
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, sname, $
                     2L, 1L, lam0, phys_unit)
   if error ne 0 then begin
@@ -244,7 +233,7 @@ IF exist eq '' THEN BEGIN
   ntrig = 0L
   npretrig = 0L
   error_tb = 0L
-  s = CALL_EXTERNAL(!libddww,'ddgetaug','ddtrange', $
+  s = CALL_EXTERNAL(libddww,'ddgetaug','ddtrange', $
                     error_tb, dia_ref, tbname, tbeg, tend, ntrig, npretrig)
 
   if error_tb ne 0 then begin
@@ -253,20 +242,20 @@ IF exist eq '' THEN BEGIN
   endif else begin  
       time = fltarr(ntrig)
       ndataread = 0L
-      s = CALL_EXTERNAL(!libddww,'ddgetaug','ddtbase',$
+      s = CALL_EXTERNAL(libddww,'ddgetaug','ddtbase',$
                         error, dia_ref, tbname, 1L, ntrig, $
                         2L, ntrig, time, ndataread)
   endelse  
       
   waittime = 0.
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, 'PARAM', 'WAITTIME', $
                     2L, 1L, waittime, phys_unit)
     
 ; read CAMAC PPG device
   if diag eq 'GVS' or diag eq 'HVS' or diag eq 'CDL' or diag eq 'LVS' then begin
       pulsa = intarr(16)
-      s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+      s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                         error, dia_ref, 'PPG', 'PULSES', $
                         11L, 16L,pulsa, phys_unit)
       if error ne 0 then begin
@@ -275,7 +264,7 @@ IF exist eq '' THEN BEGIN
       endif 
       
       reptime = intarr(16)
-      s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+      s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                         error, dia_ref, 'PPG', 'RESOLUT', $
                         11L, 16L, reptime, phys_unit)
       if error ne 0 then begin
@@ -284,7 +273,7 @@ IF exist eq '' THEN BEGIN
       endif 
       
       reptfac = intarr(16)
-      s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+      s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                         error, dia_ref, 'PPG', 'RESFACT', $
                         11L, 16L, reptfac, phys_unit)
       if error ne 0 then begin
@@ -307,7 +296,7 @@ IF exist eq '' THEN BEGIN
 ; read UDC-PPG device
   endif else begin
       pulsa = lonarr(7)     
-      s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+      s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                         error, dia_ref, 'PPG', 'PULS', $
                         1L, 7L,pulsa, phys_unit)
       if error ne 0 then begin
@@ -316,7 +305,7 @@ IF exist eq '' THEN BEGIN
       endif
       
       reptime = lonarr(7)
-      s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+      s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                         error, dia_ref, 'PPG', 'FREQ', $
                         1L, 7L, reptime, phys_unit)
       if error ne 0 then begin
@@ -325,7 +314,7 @@ IF exist eq '' THEN BEGIN
       endif
       
       reptfac = intarr(7)
-      s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+      s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                         error, dia_ref, 'PPG', 'RES', $
                         11L, 7L, reptfac, phys_unit)
       if error ne 0 then begin
@@ -335,7 +324,7 @@ IF exist eq '' THEN BEGIN
       exptime = reptime[0]*10.^(reptfac[0]*3-9)  ;[s]      
 
       output = intarr(7)
-      s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+      s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                         error, dia_ref, 'PPG', 'OUT', $
                         11L, 7L, output, phys_unit)
       if error ne 0 then begin
@@ -388,7 +377,7 @@ IF exist eq '' THEN BEGIN
           print,' TDI Mode'
       endif 
       exptime = 0.
-      s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+      s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                         error, dia_ref, 'PARAM', 'EXPTIME', $
                         2L, 1L, exptime, phys_unit)
       ntime = ntrig
@@ -430,7 +419,7 @@ IF exist eq '' THEN BEGIN
   endelse
 
   nchan = 0
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'ydim', $
                     11L, 1L, nchan, phys_unit)
   if error ne 0 then begin
@@ -439,12 +428,12 @@ IF exist eq '' THEN BEGIN
   endif 
   
   xdim = 0
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'xdim', $
                     11L, 1L, xdim, phys_unit)
 
   startx = 0
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'startx', $
                     11L, 1L, startx, phys_unit)
   if diag eq 'CDL' and shot lt 32460 then startx += 1
@@ -457,7 +446,7 @@ IF exist eq '' THEN BEGIN
   
   length  = long(xdim*nchan)
   rawdata = lonarr(length,ntrig)
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddsgroup', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddsgroup', $
                     error, dia_ref, sname, 1L, length, 1L, length, $
                     rawdata, dim)
   if error ne 0 then begin
@@ -472,7 +461,7 @@ IF exist eq '' THEN BEGIN
   saturated = where(counts ge (2.^dyn_range-50.), nsaturated)
 
   npixy = 0
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'yDimDet', $
                     11L, 1L, npixy, phys_unit)
   if error ne 0 then begin
@@ -481,7 +470,7 @@ IF exist eq '' THEN BEGIN
   endif
 
   starty = intarr(nchan)
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'starty', $
                     11L, long(nchan), starty, phys_unit)
   if error ne 0 then begin
@@ -494,7 +483,7 @@ IF exist eq '' THEN BEGIN
   endif 
   
   groupy = intarr(nchan)+1
-  s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+  s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                     error, dia_ref, pname, 'groupy', $
                     11L, long(nchan), groupy, phys_unit)
   if error ne 0 then begin
@@ -514,7 +503,7 @@ IF exist eq '' THEN BEGIN
   
   for ichan = 0, nchan-1 do begin
       dumstr = 'CHAN_'+string(ichan+1,f='(I2.2)')
-      s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+      s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                         error, dia_ref, pname, dumstr, $
                         6L,8L, losdum, phys_unit)
       if error ne 0 then begin
@@ -539,13 +528,13 @@ IF exist eq '' THEN BEGIN
   if diag eq 'GVS' or diag eq 'HVS' then begin
       pname = 'CCD'
       p_order = 'a'
-      s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+      s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                         error, dia_ref, pname, 'p_order', $
                         6L, 1L, p_order, phys_unit)
       p_order = strtrim(p_order)
       
       p_coeff = dblarr(6)
-      s = CALL_EXTERNAL(!libddww, 'ddgetaug', 'ddparm', $
+      s = CALL_EXTERNAL(libddww, 'ddgetaug', 'ddparm', $
                         error, dia_ref, pname, 'p_coeff', $
                         3L, 6L, p_coeff, phys_unit)
       
@@ -559,7 +548,7 @@ IF exist eq '' THEN BEGIN
 ;; ---------------------------------------------------------------------------------------
 close_shotfile:
   error_2 = 0L
-  s = CALL_EXTERNAL(!libddww,'ddgetaug','ddclose', $
+  s = CALL_EXTERNAL(libddww,'ddgetaug','ddclose', $
                     error_2, dia_ref)
   if error_2 ne 0 then begin
       ddww_error,error_2,exp+' '+diag+' '+string(shot,f='(i5.5)')
