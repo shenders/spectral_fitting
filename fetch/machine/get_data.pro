@@ -1,4 +1,4 @@
-Function get_data,shot,machine,diag=diag,interelm=interelm
+Function get_data,shot,machine,diag=diag,interelm=interelm,debug=debug,sig=sig,jet_coord=jet_coord
 
 IF machine eq 'AUG' THEN BEGIN
 ;    !path = expand_path('+/afs/ipp/u/mcavedon/VS/lib:')+':'+!path
@@ -78,15 +78,16 @@ IF machine eq 'AUG' THEN BEGIN
 ENDIF
 IF machine EQ 'JET'THEN BEGIN
         !PATH=!PATH + ':' + $
-        expand_path( '+~cxs/ks6read/' ) + ':' + $
-        expand_path( '+~cxs/ktread/' ) + ':' + $
-        expand_path( '+~cxs/kx1read/' ) + ':' + $
         expand_path( '+~cxs/utilities' ) + ':' + $
         expand_path( '+~cxs/calibration' ) + ':' + $
-        expand_path( '+~cxs/instrument_data' ) + ':' + $
-         expand_path( '+~cxs/idl/ks457_0/programs') 
+        expand_path( '+~cxs/instrument_data' )
+;	 + ':' + $
+;         expand_path( '+~cxs/idl/ks457_0/programs') 
+;        expand_path( '+~cxs/ks6read/' ) + ':' + $
+;        expand_path( '+~cxs/ktread/' ) + ':' + $
+;        expand_path( '+~cxs/kx1read/' ) + ':' + $
 
-    IF ~KEYWORD_SET(diag)THEN diag        = 'JET'
+    IF ~KEYWORD_SET(diag)THEN diag        = 'KT3B'
     IF ~KEYWORD_SET(wshift)THEN wshift      = 0.0
     instr_lorz  = 0.1
 
@@ -100,9 +101,10 @@ IF machine EQ 'JET'THEN BEGIN
 ;**********************************
 
     shotstr = STRING(shot,FORMAT='(I5)')
-    if keyword_set(kt3a)then $
-	  data       = get_kt3a(shot,spec=spec,debug=debug,rrange=rrange,psplot=psplot) else $
-	  data       = get_kt3b(shot,spec=spec,debug=debug,rrange=rrange,psplot=psplot)
+;    if keyword_set(kt3a)then $
+;	  data       = get_kt3a(shot,spec=spec,debug=debug,rrange=rrange,psplot=psplot,sig=sig) else $
+;	  data       = get_kt3b(shot,spec=spec,debug=debug,rrange=rrange,psplot=psplot,sig=sig)
+    data = get_kt3(shot,spec=diag,debug=debug,rrange=rrange,psplot=psplot,sig=sig)
     red_emiss  = data.phflx
     red_wavel  = data.lamgrid
     red_los    = data.losnames
@@ -110,7 +112,7 @@ IF machine EQ 'JET'THEN BEGIN
     red_wavel  = (red_wavel+wshift)
     red_error  = data.phflx*0.01
     jet_coord  = data.rval
-    IF spec eq 'kt3b' then instr_func = 0.076 else instr_func = 0.21
+    IF strlowcase(diag) eq 'kt3b' then instr_func = 0.076 else instr_func = 0.21
 ENDIF
 
 data = {emiss:red_emiss,wvlngth:red_wavel,time:red_time,error:red_error,los:red_los,instr_func:instr_func}
