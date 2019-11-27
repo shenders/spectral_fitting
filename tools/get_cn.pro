@@ -17,7 +17,7 @@ Pro get_cn,shot,los,$
 		preset=preset,psplot=psplot
 	!quiet=1
 
-	if ~keyword_set(sm)then sm = 20
+	if ~keyword_set(sm)then sm = 10
 	if ~keyword_set(upperte)then upperte = 3.8
 	if ~keyword_set(lowerte)then lowerte = 3.3
 
@@ -50,22 +50,50 @@ Pro get_cn,shot,los,$
 	end
 	
 	x1=-1 & y1=-1 & x2=-1 & y2=-1
-	read_signal_mrm,0L,shot,'UVS','D_tot',x1,y1,2,exp=exp
-	read_signal_mrm,0L,shot,'UVS','N_tot',x2,y2,2,exp=exp
-	cn_flux = (y2/7)/(y2/7+y1)
-	id = where(x1 ge min(data.time) and x1 le max(data.time))
-	cn_flux = cn_flux[id]
-	cn_time = x1[id]
-	cn_tdiv = interpol(data.tdiv,data.time,cn_time)
-	cn_idsort = sort(cn_tdiv)
+	if keyword_set(aug)then begin
+    	    read_signal_mrm,0L,shot,'UVS','D_tot',x1,y1,2,exp=exp
+	    read_signal_mrm,0L,shot,'UVS','N_tot',x2,y2,2,exp=exp
+	    cn_flux = (y2/7)/(y2/7+y1)
+	    id = where(x1 ge min(data.time) and x1 le max(data.time))
+	    cn_flux = cn_flux[id]
+	    cn_time = x1[id]
+	    cn_tdiv = interpol(data.tdiv,data.time,cn_time)
+	    cn_idsort = sort(cn_tdiv)
+	endif else begin
+	    cn_flux = -1+fltarr(n_elements(data.time))
+	    cn_time = -1+fltarr(n_elements(data.time))
+	    cn_tdiv = -1+fltarr(n_elements(data.time))
+	end   
 	!mouse.button=0
 	iter = 0
 	x1   = 3.0
 	x2   = 5.0
 	nrow = 3
 	ncol = 1
-	if keyword_set(debug)then setgraphics,nrow=nrow,ncol=ncol,colors=colors,xs=600,ys=1000,psplot=psplot,file='figures/cn_analysis.ps'
-	while !mouse.button ne 4 do begin
+	if n_elements(plasma.cn_upper[0,*]) gt 1 then begin
+	    dens2d = plasma.cn_upper
+	    temp2d = plasma.cn_upper
+	    conc2d = plasma.cn_upper
+	    for i=0,n_elements(plasma.cn_upper[0,*])-1 do begin
+	    	for j=0,n_elements(plasma.cn_upper[*,0])-1 do begin
+		    dens2d[j,i]=(plasma.dens_upper[j,i]+plasma.dens_lower[j,i])/2.0
+		    temp2d[j,i]=(plasma.te_upper[j,i]+plasma.te_lower[j,i])/2.0
+		    conc2d[j,i]=(plasma.cn_upper[j,i]+plasma.cn_lower[j,i])/2.0		    
+		endfor
+	    endfor
+    	    rval = data.rvals    	    
+	    dens2d = dens2d/1e14 & conc2d = conc2d*100 & emiss2d = data.nii4041
+	    time = data.time
+	    setgraphics,xs=800,ys=600,psplot=psplot,file='JET_dens.ps' & shimage,dens2d,time,range=[0,3],rval,title='Density [10!u20!n m!u-3!n]',xtitle='Time [s]',ytitle='R [m]',yr=[2.6,2.8]
+	    setgraphics,xs=800,ys=600,psplot=psplot,file='JET_temp.ps' & shimage,temp2d,time,rval,range=[2,4],title='Temperature [eV]',xtitle='Time [s]',ytitle='R [m]',yr=[2.6,2.8]
+	    setgraphics,xs=800,ys=600,psplot=psplot,file='JET_conc.ps' & shimage,conc2d,time,rval,range=[0,50],title='Concentration [%]',xtitle='Time [s]',ytitle='R [m]',yr=[2.6,2.8]
+	    setgraphics,xs=800,ys=600,psplot=psplot,file='JET_emis.ps' & shimage,emiss2d/1e18,time,rval,title='N II [10!u18!n ph/s/m2/sr]',xtitle='Time [s]',ytitle='R [m]',yr=[2.6,2.8]
+	    id1 = where(abs(rval - 2.65) eq min(abs(rval-2.65))) & id2 = where(abs(rval - 2.77) eq min(abs(rval-2.77))) & setgraphics,xs=800,ys=600,psplot=psplot,file='JET_dell.ps' & plot,time,emiss2d[*,id1[0]]/emiss2d[*,id2[0]],title='N II radial ratio',xtitle='Time [s]',ytitle='[-]'
+	    stop
+	endif else begin
+	    if keyword_set(debug)then setgraphics,nrow=nrow,ncol=ncol,colors=colors,xs=600,ys=1000,psplot=psplot,file='figures/cn_analysis.ps'
+	
+	    while !mouse.button ne 4 do begin
 		ii   = 0
 		exp_ratio1 = smooth(data.nii4041,sm,/edge_truncate) / smooth(data.nii3995,sm,/edge_truncate)
 		exp_ratio2 = smooth(data.nii4041,sm,/edge_truncate) / smooth(data.nii4026,sm,/edge_truncate)
@@ -123,7 +151,8 @@ Pro get_cn,shot,los,$
 			if ~keyword_set(psplot) then cursor,x,y,/up else !mouse.button = 4
 			if !mouse.button eq 2 then goto,quit
 			iter = iter + 1
-		endif else !mouse.button=4
+		endif else !mouse.button=4	    
+	    end
 	end
 	if keyword_set(psplot)then setgraphics,/close
 	if ~keyword_set(nosave)then begin

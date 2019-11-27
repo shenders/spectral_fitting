@@ -12,7 +12,7 @@ Function get_nii,shot,$
 		 no404=no404,$
 		 use_rov8=use_rov8,$
 		 dynamic=dynamic,$
-		 preset=preset
+		 preset=preset,jet=jet
 
 shotstr  = string(shot,format='(i5)') 
 if ~keyword_set(append)then append='data'
@@ -27,12 +27,12 @@ if ~keyword_set(trace)then trace='save/'+shotstr+'/'+los+'-'+append+'.idl'
 if ~keyword_set(use_evl)then begin
 	restore,trace[0]
 	time    = output.time
-	nii_3995 = output.nii[*,0,0]
-	nii_4041 = output.nii[*,0,1]
-	nii_4026 = output.nii[*,0,2]
-	nii_3995_err = output.nii_err[*,0,0]
-	nii_4041_err = output.nii_err[*,0,1]
-	nii_4026_err = output.nii_err[*,0,2]
+	nii_3995 = output.nii[*,*,0]
+	nii_4041 = output.nii[*,*,1]
+	nii_4026 = output.nii[*,*,2]
+	nii_3995_err = output.nii_err[*,*,0]
+	nii_4041_err = output.nii_err[*,*,1]
+	nii_4026_err = output.nii_err[*,*,2]
 	if keyword_set(xr)then begin
 		id = where(time ge xr[0] and time le xr[1])
 		time = time[id]
@@ -83,11 +83,41 @@ nii4041_err    = nii_4041_err[idelm,*]
 rawNii4026_err = nii_4026_err
 nii4026_err    = nii_4026_err[idelm,*]
 
-read_signal_mrm,0L,shot,'MAC','Tdiv',x,y,2,exp=exp
-id         = where(x ge min(time) and x le max(time))
-output_tdiv= y[id]
-time_tdiv  = x[id]
-tdiv       = interpol(smooth(output_tdiv,40,/edge_truncate),time_tdiv,time)
+for i=0,n_elements(nii4041_err[0,*])-1 do begin
+    id = where(finite(nii3995_err[*,i]) ne 1 or finite(nii4041_err[*,i]) ne 1 or finite(nii4026_err[*,i]) ne 1,complement=iy)
+    x1 = findgen(n_elements(nii4041_err[*,0]))
+    if iy[0] ne -1 then begin
+        nii3995_err[id,i] = interpol(nii3995_err[iy,i],x1[iy],x1[id])
+    	nii4041_err[id,i] = interpol(nii4041_err[iy,i],x1[iy],x1[id])
+    	nii4026_err[id,i] = interpol(nii4026_err[iy,i],x1[iy],x1[id])
+    endif
+endfor
+
+if keyword_set(aug)then begin
+    read_signal_mrm,0L,shot,'MAC','Tdiv',x,y,2,exp=exp
+    id         = where(x ge min(time) and x le max(time))
+    output_tdiv= y[id]
+    time_tdiv  = x[id]
+    tdiv       = interpol(smooth(output_tdiv,40,/edge_truncate),time_tdiv,time)
+endif else begin
+    tdiv = -1 + fltarr(n_elements(time))
+end
+jet =1 
+if keyword_set(jet)then begin
+    los_names = 'SP' + strcompress(string(indgen(22)+1,format='(i2)'),/remove)
+    rvals     = [2.52331,	 2.54117,      2.55904,	   2.57690,	2.59476,      2.61263,	  2.63049,      2.64836,$
+    2.66622,	 2.68408,      2.70195,	   2.71981,	2.73767,      2.75554,	  2.77340,      2.79127,$
+    2.80913,	 2.82699,      2.84486,	   2.86272,	2.88059,      2.89845]
+    istore    = -1
+    for i=0,n_elements(output.los_names)-1 do begin
+    	id = where(strpos(output.los_names,los_names[i]) ne -1 and strlen(output.los_names) eq strlen(los_names[i]))	
+	if id[0] ne -1 then istore=[istore,i]
+    endfor 
+    if n_elements(istore)gt 1 then begin
+    	istore = istore[1:*]
+	rvals  = rvals[istore]
+    endif
+endif else rvals = -1.0 + fltarr(n_elements(output.los_names))
 
 return,{ rawnii3995:rawnii3995,$
          rawnii4041:rawnii4041,$
@@ -102,6 +132,7 @@ return,{ rawnii3995:rawnii3995,$
          nii4041_err:nii4041_err,$
          nii4026_err:nii4026_err,$
 	 tdiv:tdiv,$
+	 rvals:rvals,$
 	 rawtime:rawtime,$
 	 time:time}
 End
