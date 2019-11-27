@@ -1,3 +1,68 @@
+Function constants,symbol,help=help,split=split
+
+    if keyword_set(help)then begin
+    	print,'Constants in database'
+	print,'---------------------'
+	print,'c   : speed of light'
+	print,'e   : electron charge'
+	print,'me  : mass of electron'
+	print,'mi  : mass of proton'
+	print,"h   : planck's constant"
+	print,'hc  : h * c'
+	print,"kb  : boltzmann's constant"
+	print,'ry  : rydberg energy'
+	print,'hbar: h/pi'
+	print,'pi  : pi'
+	print,'a0  : bohr radius'
+	print,'mu0 : vacuum permeability'
+	print,'epsilon0: vacuum permittivity'
+	print,'alpha: fine structure constant'
+	print,'ev_to_k: convert eV to kelvin'
+	print,'recip_4_pi: 1/(4pi)'
+	return,-1
+    endif
+    if ~keyword_set(split)then begin
+        if symbol eq 'pi' then return,3.14159265359
+    	if symbol eq 'c' then return,2.9979E+8
+    	if symbol eq 'e' then return,1.60217662E-19
+    	if symbol eq 'me' then return,9.10938356E-31
+    	if symbol eq 'h' then return,6.62607004E-34
+    	if symbol eq 'hc' then return,1.98644582E-25
+    	if symbol eq 'kb' then return,1.38064852E-23
+    	if symbol eq 'hbar' then return,1.054571817E-34
+    	if symbol eq 'mp' then return,1.6726219E-27
+    	if symbol eq 'ry' then return,13.605693
+    	if symbol eq 'ev_to_k' then return,1.1604518E4
+    	if symbol eq 'alpha' then return,7.2974E-03
+    	if symbol eq 'mu0' then return,1.256637062E-6
+    	if symbol eq 'epsilon0' then return,8.8541878128E-12
+    	if symbol eq 'a0' then return,5.2917721067E-11
+    	if symbol eq 'recip_4_pi'then return,7.957747E-2
+    endif else begin
+        if symbol eq 'pi' then return,[3.14159265359,0]
+    	if symbol eq 'c' then return,[2.9979,8]
+    	if symbol eq 'e' then return,[1.60217662,-19]
+    	if symbol eq 'me' then return,[9.10938356,-31]
+    	if symbol eq 'h' then return,[6.62607004,-34]
+    	if symbol eq 'hc' then return,[1.98644582,-25]
+    	if symbol eq 'kb' then return,[1.38064852,-23]
+    	if symbol eq 'hbar' then return,[1.054571817,-34]
+    	if symbol eq 'mp' then return,[1.6726219,-27]
+    	if symbol eq 'ry' then return,[1.3605693,1]
+    	if symbol eq 'ev_to_k' then return,[1.1604518,4]
+    	if symbol eq 'alpha' then return,[7.2974,-03]
+    	if symbol eq 'mu0' then return,[1.256637062,-6]
+    	if symbol eq 'epsilon0' then return,[8.8541878128,-12]
+    	if symbol eq 'a0' then return,[5.2917721067,-11]
+    	if symbol eq 'recip_4_pi'then return,[7.957747,-2]
+	    
+    end
+    print,'Symbol not recognised'
+    return,-1
+end
+    
+
+
 Function graphpos,xidx,yidx,rows,cols,xspc=xspc,yspc=yspc,xlim=xlim,ylim=ylim
 
     if ~keyword_set(xlim)then xlim = [0.1,0.9]
@@ -15,21 +80,31 @@ Function graphpos,xidx,yidx,rows,cols,xspc=xspc,yspc=yspc,xlim=xlim,ylim=ylim
     y0   = y1 - ydiv
 return,[x0,y0,x1,y1]
 end
-Pro legend,text,col,yshift=yshift,xshift=xshift
+Pro legend,text,col,yshift=yshift,xshift=xshift,ylog=ylog,xlog=xlog
 	if ~keyword_set(yshift)then yshift=0.0
 	if ~keyword_set(xshift)then xshift=0.0
 	xr = !x.crange
 	yr = !y.crange	
 	y0 = yr[0]+(yr[1] - yr[0])*(0.8+yshift)
 	x0 = xr[0]+(xr[1] - xr[0])*(0.7+xshift)
-	xyouts,x0,y0,text,col=col,charsize=1.4
+	if keyword_set(xlog)then begin
+    	    x0 = 10^(x0)
+	endif 	
+	if keyword_set(ylog)then begin
+	    y0 = 10^(y0)
+	endif 
+
+    	xyouts,x0,y0,text,col=col,charsize=1.4
 
 End
-Function calc_cn,shot,los,transmission,te,dens,data,sm,err=err_1
-
-	atomdb,te,dens,tec3995=tec3995
-	dl = length(data.tdiv,shot,los,upperdl=upperdl,lowerdl=lowerdl)
-	cn = smooth(data.nii3995,sm,/edge_truncate) * transmission /( tec3995 * dens * dl) / (dens * 1e6) / dl
+Function calc_cn,shot,los,transmission,te,dens,data,sm,err=err_1,jet=jet
+    	
+	cn = data.nii3995
+	for i=0,n_elements(cn[0,*])-1 do begin
+    	    atomdb,te[*,i],dens[*,i],tec3995=tec3995
+	    dl = 0.07
+	    cn[*,i] = smooth(data.nii3995[*,i],sm,/edge_truncate) * 4.0 * !pi * transmission /( tec3995 * dens[*,i] ) / (dens[*,i] * 1e6) / dl
+	endfor
 	return,cn
 	
 End
@@ -203,7 +278,7 @@ Pro deltaL,tdiv,dl,upperdl=upperdl,lowerdl=lowerdl,machine=machine,los=los,rov01
 END
 	
 PRO setgraphics,xs=xs,ys=ys,ncol=ncol,nrow=nrow,psplot=psplot,landscape=landscape,portrait=portrait,close=close,filename=filename,$
-                colors=colors,colpick=colpick,collabel=collabel,full_list=full_list
+                colors=colors,colpick=colpick,collabel=collabel,full_list=full_list,title=title
 
 	adas_colors,colors=colors
 	
@@ -271,7 +346,7 @@ PRO setgraphics,xs=xs,ys=ys,ncol=ncol,nrow=nrow,psplot=psplot,landscape=landscap
 	if ~keyword_set(ncol)then ncol=0
 	if ~keyword_set(nrow)then nrow=0
 	if ~keyword_set(psplot) and ~keyword_set(close) then begin
-		window,/free,xs=xs,ys=ys
+		window,/free,xs=xs,ys=ys,title=title
 		!p.multi=[0,ncol,nrow]
 		!p.charsize=2.0
 		!p.thick=2.0
@@ -1634,13 +1709,17 @@ PRO SHIMAGE,DATA,X,Y,RANGE=RANGE,TITLE=TITLE,XTITLE=XTITLE,YTITLE=YTITLE,XRANGE=
 ;============================
 ; ENSURE X-AXIS IS LINEAR
 ;============================
+res=x[1]-x[0]
+adas_colors,colors=colors
+loadct,5
+if ~keyword_set(range)then range=[min(data),max(data)]
 IF ~KEYWORD_SET(NOBAR)THEN BEGIN
   res=x[1]-x[0]
   IF ~KEYWORD_SET(RANGE)THEN RANGE=[MIN(DATA),MAX(DATA)]  
   PLOTIMAGE,DATA,RANGE=RANGE,$
   IMGXRANGE=[MIN(X)-res/2.0,MAX(X)+res/2.0],IMGYRANGE=[MIN(Y),MAX(Y)],XTITLE=XTITLE,YTITLE=YTITLE,CHARSIZE=CHARSIZE,$
   NCOLORS=NCOLORS,POSITION=[0.2,0.2,0.9,0.75],XRANGE=XRANGE,YRANGE=YRANGE
-  COLORBAR,DIVISIONS=5,RANGE=RANGE,FORMAT='(e7.1)',POSITION=[0.85, 0.2, 0.90, 0.9],CHARSIZE=CHARSIZE,TITLE=TITLE
+  COLORBAR,DIVISIONS=5,RANGE=RANGE,FORMAT='(d5.1)',POSITION=[0.85, 0.2, 0.90, 0.9],CHARSIZE=CHARSIZE,TITLE=TITLE,NCOLORS=NCOLORS
 ENDIF ELSE BEGIN
   IF ~KEYWORD_SET(RANGE)THEN RANGE=[MIN(DATA),MAX(DATA)]  
   PLOTIMAGE,DATA,RANGE=RANGE,$
@@ -1654,8 +1733,9 @@ PRO SHCONTOUR,DATA,X,Y,RANGE=RANGE,XRANGE=XRANGE,YRANGE=YRANGE,XTITLE=XTITLE,YTI
 
 LOADCT,5
 IF ~KEYWORD_SET(NLE)THEN NLE=50
-CONTOUR,DATA,X,Y,XR=XRANGE,YR=YRANGE,/FILL,NLE=NLE,POSITION=[0.2,0.1,0.9,0.8],YLOG=YLOG,XLOG=XLOG,XSTYLE=XSTYLE,YSTYLE=YSTYLE
-COLORBAR,DIVISIONS=5,RANGE=[MIN(DATA),MAX(DATA)],FORMAT='(e10.1)',POSITION=[0.9, 0.2, 0.97, 0.9],CHARSIZE=CHARSIZE
+adas_colors,colors=colors
+CONTOUR,DATA,X,Y,XR=XRANGE,YR=YRANGE,/FILL,NLE=NLE,POSITION=[0.2,0.1,0.9,0.8],YLOG=YLOG,XLOG=XLOG,XSTYLE=XSTYLE,YSTYLE=YSTYLE,XTITLE=XTITLE,YTITLE=YTITLE,back=colors.white,col=colors.black
+COLORBAR,DIVISIONS=5,RANGE=[MIN(DATA),MAX(DATA)],FORMAT='(d6.2)',POSITION=[0.9, 0.2, 0.97, 0.9],CHARSIZE=CHARSIZE,col=colors.black
 
 END
 
