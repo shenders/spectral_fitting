@@ -75,6 +75,7 @@ IF machine eq 'AUG' THEN BEGIN
 			endif
 		endif
 	ENDELSE	
+	rvals = -1
 ENDIF
 IF machine EQ 'JET'THEN BEGIN
         !PATH=!PATH + ':' + $
@@ -111,11 +112,11 @@ IF machine EQ 'JET'THEN BEGIN
     red_time   = data.time
     red_wavel  = (red_wavel+wshift)
     red_error  = data.phflx*0.01
-    jet_coord  = data.rval
+    rvals      = data.rval
     IF strlowcase(diag) eq 'kt3b' then instr_func = 0.076 else instr_func = 0.21
 ENDIF
 
-data = {emiss:red_emiss,wvlngth:red_wavel,time:red_time,error:red_error,los:red_los,instr_func:instr_func}
+data = {emiss:red_emiss,wvlngth:red_wavel,time:red_time,error:red_error,los:red_los,instr_func:instr_func,rvals:rvals}
 
 Return, data
 End
