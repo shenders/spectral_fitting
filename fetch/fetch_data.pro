@@ -146,7 +146,15 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 	        IF FILE_TEST(wcal_file)THEN BEGIN
 	            RESTORE,wcal_file,/verb 
 	            PRINT,'Restored wavelength calibration file'
-	        ENDIF ELSE wcal=0.0
+	        ENDIF ELSE BEGIN
+		    wcal=0.0
+		    IF ~KEYWORD_SET(calwave)THEN BEGIN
+		    	cont='N'
+		    	read,cont,prompt='Wavelength calibration not available, continue (Y/N)?'
+		    	if strlowcase(cont) ne 'y' then stop
+		    ENDIF
+		END
+		
 		IF KEYWORD_SET(calwave)THEN wcal=0.0
 
 		FOR i=0,nsig-1 DO BEGIN
@@ -371,6 +379,7 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 		   balmer_err:balmer_err,$
 		   time:time,$
 		   wavelength:wavelength,$
+		   rvals:data.rvals[id_sig],$
 		   los_names:data.los[id_sig]}
 	if keyword_set(save)then begin
 		cmd = 'mkdir -p save/'+shotstr
