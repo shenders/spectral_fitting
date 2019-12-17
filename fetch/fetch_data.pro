@@ -22,7 +22,8 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 			  load=load,$
 			  append=append,$
 			  quick=quick,$
-			  stark=stark
+			  stark=stark,$
+			  pixelview=pixelview
 			  
 			  
     	!QUIET=1
@@ -50,7 +51,7 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 ;	**** Read data ****
 ;	**********************************
 
-	data = get_data(shot,machine,diag=diag,interelm=interelm)
+	data = get_data(shot,machine,diag=diag,interelm=interelm,debug=debug,sig=sig,jet_coord=jet_coord)
 		
 ;	**********************************
 ;	**** Setup spectral line fitting *
@@ -82,6 +83,9 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 	FOR i=0,nsig-1 DO print,data.los(id_sig[i])
 	srt    = SORT(arr) & id_sig = id_sig[srt] & arr = arr[srt]
 	!P.CHARSIZE=2.0
+	
+	if keyword_set(pixelview)then pixelview,data,xr=tr
+	
 	IF id_sig[0] NE -1 THEN BEGIN 
 	    	IF ~KEYWORD_SET(tr)THEN tr=[MIN(data.time),MAX(data.time)]
 		idt = WHERE(data.time GE tr[0] AND data.time LE tr[1])
@@ -142,7 +146,15 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 	        IF FILE_TEST(wcal_file)THEN BEGIN
 	            RESTORE,wcal_file,/verb 
 	            PRINT,'Restored wavelength calibration file'
-	        ENDIF ELSE wcal=0.0
+	        ENDIF ELSE BEGIN
+		    wcal=0.0
+		    IF ~KEYWORD_SET(calwave)THEN BEGIN
+		    	cont='N'
+		    	read,cont,prompt='Wavelength calibration not available, continue (Y/N)?'
+		    	if strlowcase(cont) ne 'y' then stop
+		    ENDIF
+		END
+		
 		IF KEYWORD_SET(calwave)THEN wcal=0.0
 
 		FOR i=0,nsig-1 DO BEGIN
@@ -233,9 +245,9 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 ;	**** Fit spectra over 398 < lambda < 409 nm              ****
 ;	*************************************************************
 
-				nii_range=[395,411] 
+				nii_range=[395,406.5] 
 				if keyword_set(quick)then nii_range=[398,406] 
-				if keyword_set(stark)then nii_range=[406,411] 
+				if keyword_set(stark)then nii_range=[395,398] 
 				if keyword_set(calwave)then nii_range=[0,1000] 
 				id = WHERE(wavelength GT nii_range[0] and wavelength lt nii_range[1] )
 				IF keyword_set(calwave)then test=cal_wav(wavelength,emissivity,shotstr,diag)
@@ -289,6 +301,8 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 				nii_time_err(j,i,1)  = params_1.n404_err  
 				nii_time(j,i,2)      = params_1.n402  
 				nii_time_err(j,i,2)  = params_1.n402_err  
+				nii_time(j,i,3)      = params_1.n395  
+				nii_time_err(j,i,3)  = params_1.n395_err  
 				wi_time(j,i,0)       = params_1.nwi
 				niv_time(j,i,0)      = params_1.nvi
 				wi_time_err(j,i,0)   = params_1.nwi_err
@@ -365,6 +379,7 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 		   balmer_err:balmer_err,$
 		   time:time,$
 		   wavelength:wavelength,$
+		   rvals:data.rvals[id_sig],$
 		   los_names:data.los[id_sig]}
 	if keyword_set(save)then begin
 		cmd = 'mkdir -p save/'+shotstr
