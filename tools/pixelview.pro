@@ -36,7 +36,7 @@ Pro pixelview,data,xr=xr,psplot=psplot,id_sig=id_sig
     for i=0,n_elements(radial)-1 do radial[i]=float(strmid(los[i],2,2))
     
     setgraphics,xs=800,ys=600,title='Left click for individual spectra; middle click to quit; right click to repeat',psplot=psplot,file='figures/pixelview.ps'
-    shimage,reform(intens),radia,time,xtitle='R [m]',ytitle='Time [s]',title='N II [10!u18!n ph/s/m!u2!n/sr/nm]'
+    shimage,reform(intens),radial,time,xtitle='R [m]',ytitle='Time [s]',title='N II [10!u18!n ph/s/m!u2!n/sr/nm]'
     cursor,x,y,/up
     if !mouse.button eq 4 then begin
     	wdelete,!window
