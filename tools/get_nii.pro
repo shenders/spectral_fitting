@@ -1,3 +1,22 @@
+Pro retrieve_rval,output,rvals
+
+    los_names = 'SP' + strcompress(string(indgen(22)+1,format='(i2)'),/remove)
+    data = agm_readspec(shot,spec='kt3b')
+    agm_process_data,data,/wavecal,/radcal,/calibrate,/cal_si
+    rvals = data.data.coord
+    istore    = -1
+    for i=0,n_elements(output.los_names)-1 do begin
+    	id = where(strpos(output.los_names,los_names[i]) ne -1 and strlen(output.los_names) eq strlen(los_names[i]))	
+	if id[0] ne -1 then istore=[istore,i]
+    endfor 
+    if n_elements(istore)gt 1 then begin
+    	istore = istore[1:*]
+	rvals  = rvals[istore]
+    endif
+
+
+End
+
 Function get_nii,shot,$
 		 los=los,$
 		 xr=xr,$
@@ -12,7 +31,7 @@ Function get_nii,shot,$
 		 no404=no404,$
 		 use_rov8=use_rov8,$
 		 dynamic=dynamic,$
-		 preset=preset,jet=jet
+		 preset=preset,jet=jet,aug=aug
 
 shotstr  = string(shot,format='(i5)') 
 if ~keyword_set(append)then append='data'
@@ -22,7 +41,7 @@ if ~keyword_set(sig3995)then sig3995='N_1_3995'
 if ~keyword_set(sig4041)then sig4041='N_1_4041' 
 if ~keyword_Set(channel)then channel=22
 if ~keyword_set(trace)then trace='save/'+shotstr+'/'+los+'-'+append+'.idl'
-
+if ~keyword_set(aug)and ~keyword_set(jet)then aug=1
 
 if ~keyword_set(use_evl)then begin
 	restore,trace[0]
@@ -102,22 +121,12 @@ if keyword_set(aug)then begin
 endif else begin
     tdiv = retrieve_ratio(nii4041,output.los_names,shot)
 end
-jet =1 
-if keyword_set(jet)then begin
-    los_names = 'SP' + strcompress(string(indgen(22)+1,format='(i2)'),/remove)
-    data = agm_readspec(shot,spec='kt3b')
-    agm_process_data,data,/wavecal,/radcal,/calibrate,/cal_si
-    rvals = data.data.coord
-    istore    = -1
-    for i=0,n_elements(output.los_names)-1 do begin
-    	id = where(strpos(output.los_names,los_names[i]) ne -1 and strlen(output.los_names) eq strlen(los_names[i]))	
-	if id[0] ne -1 then istore=[istore,i]
-    endfor 
-    if n_elements(istore)gt 1 then begin
-    	istore = istore[1:*]
-	rvals  = rvals[istore]
-    endif
-endif else rvals = -1.0 + fltarr(n_elements(output.los_names))
+
+if keyword_set(jet)then retrieve_rval,output,rvals else rvals=-1 
+
+if keyword_set(use_evl)then begin
+	los_names = los
+endif else los_names = output.los_names
 
 return,{ rawnii3995:rawnii3995,$
          rawnii4041:rawnii4041,$
@@ -133,7 +142,7 @@ return,{ rawnii3995:rawnii3995,$
          nii4026_err:nii4026_err,$
 	 tdiv:tdiv,$
 	 rvals:rvals,$
-	 los_names:output.los_names,$
+	 los_names:los_names,$
 	 rawtime:rawtime,$
 	 time:time}
 End
