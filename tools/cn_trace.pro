@@ -23,6 +23,7 @@ Pro cn_trace,shot,$
 		 
 	if ~keyword_set(transmission)then transmission=1.0
 	if ~keyword_set(sm)then sm=20.0
+	if ~keyword_set(machine)then machine='AUG'
  
        	; get cn, Te and dens from line ratios
 
@@ -38,17 +39,20 @@ Pro cn_trace,shot,$
 	yspc = 0.1
 	setgraphics,nrow=nrow,ncol=ncol,colors=colors,xs=800,ys=900
 	
-	plot,data.time,plasma.te_upper,col=colors.black,back=colors.white,$
+	plot,data.time,plasma.te_upper,col=colors.black,back=colors.white,/nodata,$
 	xr=xr,xs=1,ys=9,yr=[0,6],ytitle='T!le !n[eV]',xtitle='Time [s]',pos=graphpos(0,1,nrow,ncol,xspc=xspc,yspc=yspc)
-	
-	oplot,data.time,plasma.te_lower,col=colors.black
+	oband,data.time,plasma.te_lower,plasma.te_upper,/norm,col=colors.black
 	axis,yaxis=1,/save,yr=[0,3],ytitle='n!le !n[10!u20!n m!u-3!n]',col=colors.blue
-	oplot,data.time,plasma.dens_upper/1e14,col=colors.blue
-	oplot,data.time,plasma.dens_lower/1e14,col=colors.blue
+	oband,data.time,plasma.dens_lower/1e14,plasma.dens_upper/1e14,/norm,col=colors.blue
 	
-	plot,data.time,plasma.cn_upper*100,col=colors.black,back=colors.white,$
-	xr=xr,xs=1,ys=1,yr=[0,15],ytitle='c!lN !n[%]',xtitle='Time [s]',pos=graphpos(0,0,nrow,ncol,xspc=xspc,yspc=yspc)
-	oplot,data.time,plasma.cn_lower*100,col=colors.black
+	plot,data.time,plasma.cn_upper*100,col=colors.black,back=colors.white,/nodata,$
+	xr=xr,xs=1,ys=9,yr=[0,15],ytitle='c!lN !n[%]',xtitle='Time [s]',pos=graphpos(0,0,nrow,ncol,xspc=xspc,yspc=yspc)
+	oband,data.time,plasma.cn_lower*100,plasma.cn_upper*100,/norm,col=colors.black
+	if machine eq 'AUG' then begin
+    		axis,yaxis=1,/save,yr=[-5,20],ytitle='Tdiv [eV]',col=colors.red
+		read_signal_mrm,0L,shot,'MAC','Tdiv',x,y,2,exp=exp
+		oplot,x,y,col=colors.red
+	endif else axis,yaxis=1,/save,yr=[0,15],col=colors.black
 
 	stop
 End
