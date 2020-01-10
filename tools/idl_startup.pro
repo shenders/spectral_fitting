@@ -15,6 +15,7 @@ LOADCT,5
 !path='tools:'+!path
 !path='abel:'+!path
 !path='MST:'+!path
+!path='JET:'+!path
 !path='fetch/machine:'+!path
 !path='fetch/machine/JET:'+!path
 !path='fetch/machine/AUG:'+!path

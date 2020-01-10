@@ -4,7 +4,7 @@ Function estimate_ratios,data,shot,los,transmission,$
 
 	
 	num      = 40
-	dens_arr = adas_vector(high=5e14,low=5e13,num=num)
+	dens_arr = adas_vector(high=1e15,low=1e13,num=num)
 	exp_ratio1 = smooth(data.nii4041,sm,/edge_truncate) / smooth(data.nii3995,sm,/edge_truncate)	
 	err_ratio1 = exp_ratio1 * sqrt((data.nii3995_err/data.nii3995)^2+(data.nii4041_err/data.nii4041)^2)	
 	exp_ratio1_upper = exp_ratio1 + err_ratio1/2.0

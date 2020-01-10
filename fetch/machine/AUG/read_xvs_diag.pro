@@ -8,12 +8,13 @@ pro  read_xvs_diag, shot, diag, $
                     magnification, fwhm_pix, $
                     neon_done, neon, lambda_neon, $
                     r1,phi1,z1, r2,phi2,z2, $
+                    spec_kin = spec_kin, $
                     error=error, $
                     los_name= los_name, $
                     dat = dat, $ 
 		    exp_name = exp_name,$
                     no_copy=no_copy, $
-                    no_smear_cor = no_smear_cor, $
+                    no_smear_cor = no_smear_cor, smear_opt=smear_opt, $
                     read_again = read_again
 
 diag = strupcase(diag)
@@ -23,79 +24,68 @@ new_read = 0
 lshot = long(shot)
 year = shot_to_year(shot)
 add = ''
+uid = getenv('USER') 
+ending = diag+'_'+uid
 
-if not keyword_set(no_copy) then begin
-   file = '/tmp/shenders/all_spectra_'+diag+'_'+string(shot,f='(i5.5)')
-   cmd ='mkdir -p /tmp/shenders/'
-   spawn,cmd
-   ;file = 'all_spectra_'+diag
-   exists = file_search(file)
-   if exists eq '' then new_read=1
+file = '/tmp/all_spectra_'+ending
+exists = file_search(file)
+if exists eq '' then begin 
+   new_read=1
 endif else begin
-   file = '/tmp/shenders/all_spectra_'+diag
-   cmd ='mkdir -p /tmp/shenders/'
-   spawn,cmd
-   exists = file_search(file)
-   if exists eq '' then begin 
-	new_read=1
-   endif else begin
-        read_netcdf, file, 'shot', ishot, /gatr
-        ff = abs(float(ishot-shot))
-        if ff gt 0.5 then new_read = 1
-   endelse
+   read_netcdf, file, 'shot', ishot, /gatr
+   ff = abs(float(ishot-shot))
+   if ff gt 0.5 then new_read = 1
 endelse
 
 if keyword_set(read_again) then new_read = 1
 
-new_read=1
 if new_read eq 1 then begin
     expmt = 'AUGD'
     if keyword_set(exp_name) then expmt = exp_name
     if diag eq 'DVS' then begin
-       if year ge 2017 then add='_2017' 
-       line = '/afs/ipp/u/sprd/DVL/dvsget'+add+' '+' '''+expmt+''' '+string(shot,f='(i5.5)')
+       if year lt 2017 then add='_old' 
+       line = '/afs/ipp/u/sprd/DVL/dvsget'+add+' '+expmt+' '+string(shot,f='(i5.5)')
     endif
     if diag eq 'EVS' then begin
-       if year ge 2012 then add='_2017' 
-       line = 'cd /tmp/shenders; /afs/ipp/u/sprd/EVL/evsget'+add+' '+' '''+expmt+''' '+string(shot,f='(i5.5)')
+       if year lt 2012 then add='_old' 
+       if keyword_set(spec_kin) then add='_spec_kin'
+       line = '/afs/ipp/u/sprd/EVL/evsget'+add+' '+expmt+' '+string(shot,f='(i5.5)')
     endif
     if diag eq 'FVS' then begin
-       if year ge 2012 then add='_2017' 
-       line = '/afs/ipp/u/sprd/FVL/fvsget'+add+' '+' '''+expmt+''' '+string(shot,f='(i5.5)')
+       if year lt 2012 then add='_old' 
+       if shot ge 36440 and shot le 36457 then add = '_many_tim'
+       line = '/afs/ipp/u/sprd/FVL/fvsget'+add+' '+expmt+' '+string(shot,f='(i5.5)')
     endif
     if diag eq 'GVS' then begin
-       if year ge 2012 then add='_2017' 
-       line = '/afs/ipp/u/sprd/GVL/gvsget'+add+' '+' '''+expmt+''' '+string(shot,f='(i5.5)')
-    endif   
+       line = '/afs/ipp/u/sprd/GVL/gvsget'+add+' '+expmt+' '+string(shot,f='(i5.5)')
+    endif  
     if diag eq 'LVS' then begin
-       if year ge 2014 then add='_2014'
-       line = '/afs/ipp/u/sprd/LVL/lvsget'+add+' '+' '''+expmt+''' '+string(shot,f='(i5.5)')
+       if year lt 2014 then add='_old'
+       line = '/afs/ipp/u/sprd/LVL/lvsget'+add+' '+expmt+' '+string(shot,f='(i5.5)')
     endif
     if diag eq 'BES' then begin
-       if year ge 2014 then add='_2014'
-       line = '/afs/ipp/u/cxrs/BEL/besget'+add+' '+' '''+expmt+''' '+string(shot,f='(i5.5)')
-     endif
+       if year lt 2014 then add='_old'
+       line = '/afs/ipp/u/cxrs/BEL/besget'+add+' '+expmt+' '+string(shot,f='(i5.5)')
+    endif
     if diag eq 'BEP' then begin
        add=' '
-       line = '/afs/ipp/u/cxrs/BPZ/bepget'+add+' '+' '''+expmt+''' '+string(shot,f='(i5.5)')
+       line = '/afs/ipp/u/cxrs/BPZ/bepget'+add+' '+expmt+' '+string(shot,f='(i5.5)')
     endif
     if diag eq 'CDL' then begin
-       if year ge 2017 then add='_2017'
-       line = 'cd /tmp/shenders; /afs/ipp/u/disp/CDM/cdlget'+add+' '+' '''+expmt+''' '+string(shot,f='(i5.5)')
+       if year lt 2017 then add='_old'
+       line = '/afs/ipp/u/disp/CDM/cdlget'+add+' '+expmt+' '+string(shot,f='(i5.5)')
     endif
     if diag eq 'CFR' then $
-       line = 'cd /tmp/shenders; /afs/ipp/u/cxrs/idl/CFR_ausw/cfrget '+' '''+expmt+''' '+string(shot,f='(i5.5)')
+       line = 'cd /tmp; /afs/ipp/u/cxrs/idl/CFR_ausw/cfrget '+expmt+' '+string(shot,f='(i5.5)')
 
-    if keyword_set(no_smear_cor) then line = line +' 0 ' else line = line + ' '
+    if keyword_set(no_smear_cor) then begin 
+       line = line +' 0 ' 
+    endif else begin
+       if keyword_set(smear_opt) then line = line + string(smear_opt,f='(x,i1,x)')
+    endelse
     
-    spawn, line
+    spawn, strsplit(line,/extract),/noshell
 
-    if not keyword_set(no_copy) then begin
-        line = string('mv /tmp/all_spectra_'+diag+' /tmp/shenders/all_spectra_'+diag+'_'+$
-                     string(shot,f='(i5.5)'))
-       print,'Keeping file'
-       spawn, line
-    endif
     exists = file_search(file)
     if exists eq '' then begin 
        error=1L
@@ -111,7 +101,7 @@ if new_read eq 1 then begin
           return
        endif
     endelse
-endif
+ endif
 
 read_netcdf, file, 'dwdp', dwdp, /gatr
 read_netcdf, file, 'exptime', exptime, /gatr
@@ -139,11 +129,15 @@ phi2 = phi2*!Pi/180.
 
 nlos = n_elements(r1)
 fwhm_pix = dblarr(nlos) + 1.5
+fwhm_lor_blue = dblarr(nlos) 
+fwhm_lor_red  = dblarr(nlos) 
 wslit_image = dblarr(nlos)
 neon_done = 0
 neon=1.
 
 read_netcdf, file, 'fwhm_pix', fwhm_pix, /all
+read_netcdf, file, 'fwhm_lor_blue', fwhm_lor_blue, /all
+read_netcdf, file, 'fwhm_lor_red', fwhm_lor_red, /all
 read_netcdf, file, 'wslit_shape', wslit_image, /all
 read_netcdf, file, 'gratcons', gratcons, /gatr
 read_netcdf, file, 'op_ang', op_ang, /gatr
@@ -171,6 +165,8 @@ dat = {counts: spec, $
        pixw: pixw, $
        magnification: magnification, $
        fwhm_pix: fwhm_pix, $
+       fwhm_lor_blue: fwhm_lor_blue, $
+       fwhm_lor_red: fwhm_lor_red, $
        gratcons: gratcons, $
        op_ang: op_ang, $
        foc_len: foc_len, $

@@ -84,7 +84,7 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 	srt    = SORT(arr) & id_sig = id_sig[srt] & arr = arr[srt]
 	!P.CHARSIZE=2.0
 	
-	if keyword_set(pixelview)then pixelview,data,xr=tr
+	if keyword_set(pixelview)then pixelview,data,id_sig=id_sig,xr=tr
 	
 	IF id_sig[0] NE -1 THEN BEGIN 
 	    	IF ~KEYWORD_SET(tr)THEN tr=[MIN(data.time),MAX(data.time)]
@@ -151,7 +151,7 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 		    IF ~KEYWORD_SET(calwave)THEN BEGIN
 		    	cont='N'
 		    	read,cont,prompt='Wavelength calibration not available, continue (Y/N)?'
-		    	if strlowcase(cont) ne 'y' then stop
+		    	if strlowcase(cont) ne 'y' then return,-1
 		    ENDIF
 		END
 		
@@ -250,7 +250,10 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 				if keyword_set(stark)then nii_range=[395,398] 
 				if keyword_set(calwave)then nii_range=[0,1000] 
 				id = WHERE(wavelength GT nii_range[0] and wavelength lt nii_range[1] )
-				IF keyword_set(calwave)then test=cal_wav(wavelength,emissivity,shotstr,diag)
+				IF keyword_set(calwave)then begin
+				    test=cal_wav(wavelength,emissivity,shotstr,diag)
+				    return,-1
+				endif
 				id_reduce_gauss=WHERE(gauss.pos LE MAX(wavelength[id])and gauss.pos GE MIN(wavelength[id]))
 				id_reduce_voigt=WHERE(voigt.pos LE MAX(wavelength[id])and voigt.pos GE MIN(wavelength[id]))
 				gauss_new = {pos:gauss.pos[id_reduce_gauss],$

@@ -1,5 +1,7 @@
 Function calc_profiles, data, dens_arr, te_arr, ratio1, ratio2, exp_ratio1, exp_ratio2 ,debug=debug
 
+	tol = 0.05
+	repeat_tol:
 	num        = n_elements(dens_arr)
 	idx        = fltarr(num)	
 	min2       = fltarr(num)
@@ -7,7 +9,6 @@ Function calc_profiles, data, dens_arr, te_arr, ratio1, ratio2, exp_ratio1, exp_
 	dens       = fltarr(n_elements(exp_ratio1))
 	sim_ratio1 = fltarr(n_elements(exp_ratio1))
 	sim_ratio2 = fltarr(n_elements(exp_ratio1))
-	
 	for i=0,n_elements(exp_ratio1)-1 do begin
 		for j=0,num-1 do begin
 			min1   = abs((ratio1[*,j] - exp_ratio1[i])/exp_ratio1[i]) * $
@@ -15,12 +16,26 @@ Function calc_profiles, data, dens_arr, te_arr, ratio1, ratio2, exp_ratio1, exp_
 			idx[j] = where(min1 eq min(min1))
 			min2[j]= min1[idx[j]]
 		endfor
-		idy     = where(min2 eq min(min2))
+		
+		; check for multiple solutions and choose solution that matches best ratio
+		;
+		
+		order = sort(min2)
+		chi = fltarr(n_elements(order))
+		for k=0,n_elements(order)-1 do begin
+			chi[k] = (exp_ratio1[i] - ratio1[idx[order[k]],order[k]])^2/exp_ratio1[i]
+			chi[k] = chi[k] +  (exp_ratio2[i] - ratio2[idx[order[k]],order[k]])^2/exp_ratio2[i]
+		endfor
+		
+		idz = where(chi eq min(chi))
+		idy = order[idz[0]]
         	; check if reasonable solution found
 		sim_ratio1[i] = ratio1[idx[idy[0]],idy[0]]
 		sim_ratio2[i] = ratio2[idx[idy[0]],idy[0]]
-		if abs(sim_ratio1[i]-exp_ratio1[i])/exp_ratio1[i] lt 0.05 and $
-		   abs(sim_ratio2[i]-exp_ratio2[i])/exp_ratio2[i] lt 0.05 then begin
+		
+		
+		if abs(sim_ratio1[i]-exp_ratio1[i])/exp_ratio1[i] lt tol and $
+		   abs(sim_ratio2[i]-exp_ratio2[i])/exp_ratio2[i] lt tol then begin
 			dens[i] = dens_arr[idx[idy[0]]]
 			te[i]   = te_arr[idy[0]]
 		endif else begin
@@ -36,7 +51,10 @@ Function calc_profiles, data, dens_arr, te_arr, ratio1, ratio2, exp_ratio1, exp_
 		dens[iy] = interpol(dens[id],data.time[id],data.time[iy])
 		sim_ratio1[iy] = interpol(sim_ratio1[id],data.time[id],data.time[iy])
 		sim_ratio2[iy] = interpol(sim_ratio2[id],data.time[id],data.time[iy])
-	endif	
+	endif else begin
+		print,'Warning: All values eq -1'		
+		stop
+	end	
 
 	return,{sim_ratio1: sim_ratio1,$
         	sim_ratio2: sim_ratio2,$
@@ -44,25 +62,34 @@ Function calc_profiles, data, dens_arr, te_arr, ratio1, ratio2, exp_ratio1, exp_
 		te        : te         }
 end
 
-Function optimize_ratios,data,shot,los,transmission,sm=sm,debug=debug
+Function optimize_ratios,data,shot,los,transmission,sm=sm,debug=debug,nocn=nocn
 
 	num      = 40
-	te_arr   = adas_vector(high=6,low=2.,num=num)
+	te_arr   = adas_vector(high=6,low=1.,num=num)
 	dens_arr = adas_vector(high=1e15,low=1e13,num=num)
 	ratio1   = fltarr(num,num)
 	ratio2   = fltarr(num,num)
-
-	exp_ratio1 = smooth(data.nii4041,sm,/edge_truncate) / smooth(data.nii3995,sm,/edge_truncate)
-	exp_ratio2 = smooth(data.nii4041,sm,/edge_truncate) / smooth(data.nii4026,sm,/edge_truncate)
+	exp_ratio1 = data.nii4041
+	exp_ratio2 = data.nii4041
+	err_ratio1 = data.nii4041
+	err_ratio2 = data.nii4041
+	exp_ratio1_upper = data.nii4041
+	exp_ratio2_lower = data.nii4041
+	exp_ratio2_upper = data.nii4041
+	exp_ratio1_lower = data.nii4041
+    	for i=0,n_elements(data.nii4041[0,*])-1 do begin
+    	    exp_ratio1[*,i] = smooth(data.nii4041[*,i],sm,/edge_truncate) / smooth(data.nii3995[*,i],sm,/edge_truncate)
+	    exp_ratio2[*,i] = smooth(data.nii4041[*,i],sm,/edge_truncate) / smooth(data.nii4026[*,i],sm,/edge_truncate)
+	    
+	    err_ratio1[*,i] = exp_ratio1[*,i] * sqrt((data.nii3995_err[*,i]/data.nii3995[*,i])^2+(data.nii4041_err[*,i]/data.nii4041[*,i])^2)
+	    err_ratio2[*,i] = exp_ratio2[*,i] * sqrt((data.nii4026_err[*,i]/data.nii4026[*,i])^2+(data.nii4041_err[*,i]/data.nii4041[*,i])^2)
 	
-	err_ratio1 = exp_ratio1 * sqrt((data.nii3995_err/data.nii3995)^2+(data.nii4041_err/data.nii4041)^2)
-	err_ratio2 = exp_ratio2 * sqrt((data.nii4026_err/data.nii4026)^2+(data.nii4041_err/data.nii4041)^2)
-	
-	exp_ratio1_upper = exp_ratio1 + err_ratio1/2.0
-	exp_ratio1_lower = exp_ratio1 - err_ratio1/2.0
+	    exp_ratio1_upper[*,i] = exp_ratio1[*,i] + err_ratio1[*,i]/2.0
+	    exp_ratio1_lower[*,i] = exp_ratio1[*,i] - err_ratio1[*,i]/2.0
 
-	exp_ratio2_upper = exp_ratio2 + err_ratio2/2.0
-	exp_ratio2_lower = exp_ratio2 - err_ratio2/2.0
+	    exp_ratio2_upper[*,i] = exp_ratio2[*,i] + err_ratio2[*,i]/2.0
+	    exp_ratio2_lower[*,i] = exp_ratio2[*,i] - err_ratio2[*,i]/2.0
+    	endfor
 
 	print,'Fetching atomic data...'
 	for i=0,num-1 do begin
@@ -75,16 +102,6 @@ Function optimize_ratios,data,shot,los,transmission,sm=sm,debug=debug
 	endfor
 
 	; find best solution for 4 different cases
-
-	if keyword_set(debug)then begin
-		setgraphics,colors=colors,colpick=colpick,/full
-		plot,[6,10],[0,0.5],/nodata,col=colors.black,back=colors.white	
-		for i=0,num-1 do oplot,ratio2[*,i],ratio1[*,i],col=colpick[i]
-		user_psym,5,/fill & oplot,exp_ratio2_upper,exp_ratio1_upper,psym=8,col=colors.black
-		user_psym,5,/fill & oplot,exp_ratio2_upper,exp_ratio1_lower,psym=8,col=colors.black
-		user_psym,5,/fill & oplot,exp_ratio2_lower,exp_ratio1_upper,psym=8,col=colors.black
-		user_psym,5,/fill & oplot,exp_ratio2_lower,exp_ratio1_lower,psym=8,col=colors.black
-	endif
 
         ; case 1: ratio1 + err with ratio2 + err
         res1 = calc_profiles(data, dens_arr, te_arr, ratio1, ratio2, exp_ratio1_upper, exp_ratio2_upper,debug=debug)
@@ -99,39 +116,44 @@ Function optimize_ratios,data,shot,los,transmission,sm=sm,debug=debug
         res4 = calc_profiles(data, dens_arr, te_arr, ratio1, ratio2, exp_ratio1_lower, exp_ratio2_lower,debug=debug)
 
 	; find maximum and minimum values for ratios
-	te_lower     = fltarr(n_elements(exp_ratio1))
-	te_upper     = fltarr(n_elements(exp_ratio1))
-	dens_lower   = fltarr(n_elements(exp_ratio1))
-	dens_upper   = fltarr(n_elements(exp_ratio1))
-	ratio1_lower = fltarr(n_elements(exp_ratio1))
-	ratio2_lower = fltarr(n_elements(exp_ratio1))
-	ratio1_upper = fltarr(n_elements(exp_ratio1))
-	ratio2_upper = fltarr(n_elements(exp_ratio1))
-	
-	for i=0,n_elements(data.time)-1 do begin
-		te_lower[i]     = res1.te[i]<res2.te[i]<res3.te[i]<res4.te[i]
-		te_upper[i]     = res1.te[i]>res2.te[i]>res3.te[i]>res4.te[i]
-		dens_lower[i]   = res1.dens[i]<res2.dens[i]<res3.dens[i]<res4.dens[i]
-		dens_upper[i]   = res1.dens[i]>res2.dens[i]>res3.dens[i]>res4.dens[i]
-		ratio1_lower[i] = res1.sim_ratio1[i]<res2.sim_ratio1[i]<res3.sim_ratio1[i]<res4.sim_ratio1[i]
-		ratio1_upper[i] = res1.sim_ratio1[i]>res2.sim_ratio1[i]>res3.sim_ratio1[i]>res4.sim_ratio1[i]
-		ratio2_lower[i] = res1.sim_ratio2[i]<res2.sim_ratio2[i]<res3.sim_ratio2[i]<res4.sim_ratio2[i]
-		ratio2_upper[i] = res1.sim_ratio2[i]>res2.sim_ratio2[i]>res3.sim_ratio2[i]>res4.sim_ratio2[i]
+	te_lower     = exp_ratio1
+	te_upper     = exp_ratio1
+	dens_lower   = exp_ratio1
+	dens_upper   = exp_ratio1
+	ratio1_lower = exp_ratio1
+	ratio2_lower = exp_ratio1
+	ratio1_upper = exp_ratio1
+	ratio2_upper = exp_ratio1
+	for k=0,n_elements(exp_ratio1[0,*])-1 do begin
+    	    for i=0,n_elements(data.time)-1 do begin
+		te_lower[i,k]     = res1.te[i,k]<res2.te[i,k]<res3.te[i,k]<res4.te[i,k]
+		te_upper[i,k]     = res1.te[i,k]>res2.te[i,k]>res3.te[i,k]>res4.te[i,k]
+		dens_lower[i,k]   = res1.dens[i,k]<res2.dens[i,k]<res3.dens[i,k]<res4.dens[i,k]
+		dens_upper[i,k]   = res1.dens[i,k]>res2.dens[i,k]>res3.dens[i,k]>res4.dens[i,k]
+		ratio1_lower[i,k] = res1.sim_ratio1[i,k]<res2.sim_ratio1[i,k]<res3.sim_ratio1[i,k]<res4.sim_ratio1[i,k]
+		ratio1_upper[i,k] = res1.sim_ratio1[i,k]>res2.sim_ratio1[i,k]>res3.sim_ratio1[i,k]>res4.sim_ratio1[i,k]
+		ratio2_lower[i,k] = res1.sim_ratio2[i,k]<res2.sim_ratio2[i,k]<res3.sim_ratio2[i,k]<res4.sim_ratio2[i,k]
+		ratio2_upper[i,k] = res1.sim_ratio2[i,k]>res2.sim_ratio2[i,k]>res3.sim_ratio2[i,k]>res4.sim_ratio2[i,k]
+	    endfor
 	endfor
 
 	; find line-integrated nii
-        cn_1 = calc_cn(shot,los,transmission,te_lower,dens_lower,data,sm,err=err_1)
-        cn_2 = calc_cn(shot,los,transmission,te_lower,dens_upper,data,sm,err=err_2)
-        cn_3 = calc_cn(shot,los,transmission,te_upper,dens_lower,data,sm,err=err_3)
-        cn_4 = calc_cn(shot,los,transmission,te_upper,dens_upper,data,sm,err=err_4)
-		
-	cn_lower = fltarr(n_elements(data.time))
-	cn_upper = fltarr(n_elements(data.time))
+	cn_lower = exp_ratio1
+	cn_upper = exp_ratio1
 
-	for i=0,n_elements(data.time)-1 do begin
-		cn_lower[i] = (cn_1[i])<(cn_2[i])<(cn_3[i])<(cn_4[i])
-		cn_upper[i] = (cn_1[i])>(cn_2[i])>(cn_3[i])>(cn_4[i])
-	endfor
+        if ~keyword_set(nocn)then begin
+    	    cn_1 = calc_cn(shot,los,transmission,te_lower,dens_lower,data,sm,err=err_1,/jet)
+            cn_2 = calc_cn(shot,los,transmission,te_lower,dens_upper,data,sm,err=err_2,/jet)
+            cn_3 = calc_cn(shot,los,transmission,te_upper,dens_lower,data,sm,err=err_3,/jet)
+            cn_4 = calc_cn(shot,los,transmission,te_upper,dens_upper,data,sm,err=err_4,/jet)
+	    for k=0,n_elements(exp_ratio1[0,*])-1 do begin
+	    	for i=0,n_elements(data.time)-1 do begin
+		    cn_lower[i,k] = (cn_1[i,k])<(cn_2[i,k])<(cn_3[i,k])<(cn_4[i,k])
+		    cn_upper[i,k] = (cn_1[i,k])>(cn_2[i,k])>(cn_3[i,k])>(cn_4[i,k])
+	    	endfor
+	    endfor
+	endif 
+	
 	return,{ratio1_upper:ratio1_upper,$
 		ratio2_upper:ratio2_upper,$
 		ratio1_lower:ratio1_lower,$
