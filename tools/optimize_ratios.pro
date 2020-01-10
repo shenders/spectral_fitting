@@ -62,7 +62,7 @@ Function calc_profiles, data, dens_arr, te_arr, ratio1, ratio2, exp_ratio1, exp_
 		te        : te         }
 end
 
-Function optimize_ratios,data,shot,los,transmission,sm=sm,debug=debug,nocn=nocn
+Function optimize_ratios,data,shot,los,transmission,sm=sm,debug=debug,nocn=nocn,jet=jet
 
 	num      = 40
 	te_arr   = adas_vector(high=6,low=1.,num=num)
@@ -142,10 +142,10 @@ Function optimize_ratios,data,shot,los,transmission,sm=sm,debug=debug,nocn=nocn
 	cn_upper = exp_ratio1
 
         if ~keyword_set(nocn)then begin
-    	    cn_1 = calc_cn(shot,los,transmission,te_lower,dens_lower,data,sm,err=err_1,/jet)
-            cn_2 = calc_cn(shot,los,transmission,te_lower,dens_upper,data,sm,err=err_2,/jet)
-            cn_3 = calc_cn(shot,los,transmission,te_upper,dens_lower,data,sm,err=err_3,/jet)
-            cn_4 = calc_cn(shot,los,transmission,te_upper,dens_upper,data,sm,err=err_4,/jet)
+    	    cn_1 = calc_cn(shot,los,transmission,te_lower,dens_lower,data,sm,err=err_1,jet=jet)
+            cn_2 = calc_cn(shot,los,transmission,te_lower,dens_upper,data,sm,err=err_2,jet=jet)
+            cn_3 = calc_cn(shot,los,transmission,te_upper,dens_lower,data,sm,err=err_3,jet=jet)
+            cn_4 = calc_cn(shot,los,transmission,te_upper,dens_upper,data,sm,err=err_4,jet=jet)
 	    for k=0,n_elements(exp_ratio1[0,*])-1 do begin
 	    	for i=0,n_elements(data.time)-1 do begin
 		    cn_lower[i,k] = (cn_1[i,k])<(cn_2[i,k])<(cn_3[i,k])<(cn_4[i,k])

@@ -40,32 +40,12 @@ Pro get_cn,shot,los,$
 	endif else coluse=colors.black   
 	shotstr = string(shot,format='(I5)')
     	filename = 'save/'+shotstr+'/'+los+'get_cn.sav'
-	if keyword_set(aug)then begin
-    	    read_signal_mrm,0L,shot,'UVS','D_tot',x1,y1,2,exp=exp
-	    read_signal_mrm,0L,shot,'UVS','N_tot',x2,y2,2,exp=exp
-	    cn_flux = (y2/7)/(y2/7+y1)
-	    id = where(x1 ge min(data.time) and x1 le max(data.time))
-	    cn_flux = cn_flux[id]
-	    cn_time = x1[id]
-	    cn_tdiv = interpol(data.tdiv,data.time,cn_time)
-	    cn_idsort = sort(cn_tdiv)
-	endif else begin
-    	    if keyword_set(switchgas)then begin
-    	    	ppfread,shot=shot,dda='GASM',dtype='MN1R',data=d_flux,t=time_d
-    	    	ppfread,shot=shot,dda='GASM',dtype='MAJR',data=n_flux,t=time_n
-	    endif else begin
-    	    	ppfread,shot=shot,dda='GASM',dtype='MAJR',data=d_flux,t=time_d
-    	    	ppfread,shot=shot,dda='GASM',dtype='MN1R',data=n_flux,t=time_n	    
-	    end
-	    cn_flux =( interpol(n_flux/7,time_n,time_d) / (d_flux+interpol(n_flux/7,time_n,time_d)))
-	    cn_time =time_d
-	    cn_tdiv = -1+fltarr(n_elements(cn_time))
-	end   
     	if keyword_set(fluxonly)then begin
+	    flux = get_flux(shot,aug=aug,jet=jet,switchgas=switchgas)
 	    if ~keyword_set(overplot)then begin
 	    	setgraphics,xs=800,ys=600,psplot=psplot,file='JET_1d_conc.ps' ,colors=colors & plot,cn_time-t0,cn_flux*100,xr=[0,2.5],back=colors.white,xtitle='Time - t!lseeding!n [s]',ytitle='c!lN!n [%]',col=colors.black,/nodata,yr=[0,50]
 	    endif
-	    oplot,cn_time-t0,cn_flux*100,col=coluse
+	    oplot,flux.cn_time-t0,flux.cn_flux*100,col=coluse
 	    stop
 	end
 	if keyword_set(load) and file_test(filename) then begin
@@ -106,7 +86,7 @@ Pro get_cn,shot,los,$
 	x1=-1 & y1=-1 & x2=-1 & y2=-1
 	!mouse.button=0
 	iter = 0
-	nrow = 3
+	nrow = 4
 	ncol = 1
 	if n_elements(plasma.cn_upper[0,*]) gt 1 then begin
 	    x1   = 1.0
