@@ -84,7 +84,7 @@ FUNCTION fetch_data,shot, sig,tr=tr,$
 	srt    = SORT(arr) & id_sig = id_sig[srt] & arr = arr[srt]
 	!P.CHARSIZE=2.0
 	
-	if keyword_set(pixelview)then pixelview,data,xr=tr
+	if keyword_set(pixelview)then pixelview,data,id_sig=id_sig,xr=tr
 	
 	IF id_sig[0] NE -1 THEN BEGIN 
 	    	IF ~KEYWORD_SET(tr)THEN tr=[MIN(data.time),MAX(data.time)]

@@ -529,6 +529,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 		print,'4041/3995: ',n_404_int/n_399_int
 		print,'4041/4026: ',n_404_int/n_402_int
 		print,'395.5 nm:  ',n_395_int
+		calc_profs, n_399_int[0], n_404_int[0],n_402_int[0] 
 		IF nvoigt NE 0 THEN BEGIN
 		    PRINT,'Balmer Feature Details:'
 	    	    id_check=where(parnames_err EQ 'd.dens')

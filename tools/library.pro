@@ -75,14 +75,14 @@ Function graphpos,xidx,yidx,rows,cols,xspc=xspc,yspc=yspc,xlim=xlim,ylim=ylim
     if ~keyword_set(ylim)then ylim = [0.15,0.9]
     if ~keyword_set(xspc)then xspc = 0.00
     if ~keyword_set(yspc)then yspc = 0.00
-    xdif = xlim[1]-xlim[0]-xspc*(cols-1)
-    ydif = ylim[1]-ylim[0]-yspc*(rows-1)
+    xdif = xlim[1]-xlim[0]-xspc*(cols-1)-xspc
+    ydif = ylim[1]-ylim[0]-yspc*(rows-1)-yspc
     tgrp = rows * cols
     xdiv = xdif / cols
     ydiv = ydif / rows
-    x0   = xlim[0] + xdiv * xidx + xspc * xidx
+    x0   = xlim[0] + xdiv * xidx + xspc * xidx + xspc/2.0
     x1   = x0 + xdiv
-    y1   = 1.0 - (ylim[0] + ydiv * yidx + yspc * yidx)
+    y1   = 1.0 - (ylim[0] + ydiv * yidx + yspc * yidx)+yspc/2.0
     y0   = y1 - ydiv
 return,[x0,y0,x1,y1]
 end

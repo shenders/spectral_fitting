@@ -1,4 +1,4 @@
-Pro pixelview,data,xr=xr,psplot=psplot
+Pro pixelview,data,xr=xr,psplot=psplot,id_sig=id_sig
 
 
     wave = data.wvlngth[*,0] ; function of wave, los
@@ -11,11 +11,16 @@ Pro pixelview,data,xr=xr,psplot=psplot
 	time = time[id_time]
 	emis = emis[*,*,id_time]
     endif
-    miss_pix = 3
+    miss_pix = 0
     emis = emis[*,miss_pix:*,*]
     los  = data.los[miss_pix:*]
     rval = rval[miss_pix:*]
-    
+    id_sig=id_sig[miss_pix:*]
+    if keyword_set(id_sig)then begin
+       emis = emis[*,id_sig,*]
+       los  = los[id_sig]
+       rval = rval[id_sig]
+    endif    
     tint = total(emis,3)     ; sum dimension in time
     lint = total(tint,2)     ; sum dimension in los
     
@@ -31,7 +36,7 @@ Pro pixelview,data,xr=xr,psplot=psplot
     for i=0,n_elements(radial)-1 do radial[i]=float(strmid(los[i],2,2))
     
     setgraphics,xs=800,ys=600,title='Left click for individual spectra; middle click to quit; right click to repeat',psplot=psplot,file='figures/pixelview.ps'
-    shimage,reform(intens),rval,time,xtitle='R [m]',ytitle='Time [s]',title='N II [10!u18!n ph/s/m!u2!n/sr/nm]'
+    shimage,reform(intens),radia,time,xtitle='R [m]',ytitle='Time [s]',title='N II [10!u18!n ph/s/m!u2!n/sr/nm]'
     cursor,x,y,/up
     if !mouse.button eq 4 then begin
     	wdelete,!window
@@ -44,7 +49,7 @@ Pro pixelview,data,xr=xr,psplot=psplot
 	    goto,fin
 	endif else begin
     	    id_time = where(abs(time-y) eq min(abs(time-y)))
-	    id_los  = where(abs(rval-x) eq min(abs(rval-x)))
+	    id_los  = where(abs(radial-x) eq min(abs(radial-x)))
 	    oplot,[x,x],[0,1000],linest=5,col=colors.white
 	    oplot,[0,1000],[y,y],linest=5,col=colors.white
     	    setgraphics,xs=800,ys=600,title='Left click to quit; right click to repeat'

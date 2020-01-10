@@ -189,7 +189,7 @@ Pro get_cn,shot,los,$
 		idsort     = sort(data.tdiv)
 		idsortraw  = sort(rawtdiv)
 		xr = [min(data.time)*1.05,max(data.time)*0.95]
-		xr = [0,15]
+		xr = [0,25]
 		if keyword_set(debug)then begin
 			plot,data.tdiv[idsort],exp_ratio1[idsort],col=colors.black,back=colors.white,yr=[0.,0.3],/nodata,xr=xr,xs=1,$
 			ytitle='N II line ratios [-]',position=graphpos(0,ii,nrow,ncol,xspc=xspc,yspc=yspc),xtickname=replicate(' ',30)
@@ -199,6 +199,14 @@ Pro get_cn,shot,los,$
 			oplot,data.tdiv[idsort],exp_ratio2[idsort]/70,col=colors.green
 			legend,'404.1/399.5',colors.black,yshift=-0.07
 			legend,'404.1/402.6/70',colors.black,yshift=-0.5
+		    	dl = length(data.tdiv[idsort],shot,los,upperdl=upperdl,lowerdl=lowerdl)
+		        ii = ii +1
+			plot,data.tdiv[idsort],dl*100,col=colors.black,back=colors.white,yr=[0,10],$
+			   position=graphpos(0,ii,nrow,ncol,xspc=xspc,yspc=yspc),xtickname=replicate(' ',30),xr=xr,xs=1,$
+			   ytitle='Delta L [cm]'
+
+		        oplot,[x1,x1],[0,10],col=colors.red,linest=5
+		        oplot,[x2,x2],[0,10],col=colors.red,linest=5
 			ii = ii+1
 
 			plot,data.tdiv[idsort],plasma.dens_upper[idsort]*1e6/1e20,col=colors.black,back=colors.white,$
@@ -213,12 +221,11 @@ Pro get_cn,shot,los,$
 			xtitle='Tdiv [eV]',xr=xr,xs=1,position=graphpos(0,ii,nrow,ncol,xspc=xspc,yspc=yspc),$
 			ytitle='c!lN!n [%]',/nodata,yr=[0,20]
 			oband,data.tdiv[idsort],plasma.cn_lower[idsort]*100,plasma.cn_upper[idsort]*100,/norm,col=colors.black
-			oplot,cn_tdiv[cn_idsort],cn_flux[cn_idsort]*100,col=colors.blue
 			if iter ne 0 then cursor,x1,y1,/up
 			if !mouse.button eq 2 then goto,quit
-			oplot,[x1,x1],[0,40],col=colors.red
+			oplot,[x1,x1],[0,40],col=colors.red,linest=5
 			if iter ne 0 then cursor,x2,y2,/up
-			oplot,[x2,x2],[0,40],col=colors.red
+			oplot,[x2,x2],[0,40],col=colors.red,linest=5
 		endif
 		id      = where(data.tdiv ge x1<x2 and data.tdiv le x1>x2)
 		cn_mean = (mean(plasma.cn_upper[id]*100) + mean(plasma.cn_lower[id]*100))/2.0
