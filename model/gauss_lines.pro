@@ -65,7 +65,7 @@ if keyword_set(extra_line)then begin
 	id = where(species eq 'He')
 	if id[0] ne -1 then begin	
 		X_lines  = [396.50  ,402.62, 399.29 , 399.35 , 399.57, 396.20  , 396.89  , 399.7   , 401.38  , 401.493 , $
-            	402.478 , 402.533 , 402.6, 402.7, 407.88  , 408.06  , 408.82  ,409.55 , 410.6 , 750.0 , 750.9, 751.99,409.87,410.47]
+            	402.478 , 402.533 , 402.6, 402.7, 407.88  , 408.06  , 408.82  ,409.55 , 410.6 , 750.0 , 750.9, 751.99,409.87,410.47, 395.42]
 		X_ions   = strarr(n_elements(X_lines))+'xx'
 		X_trn    = strarr(n_elements(X_lines))+'xxxx'
 		X_cpl    = strarr(n_elements(X_lines))+0.0
@@ -76,7 +76,7 @@ if keyword_set(extra_line)then begin
 		X_trn[0:1]  = ['4p2s'  ,'4p2s'] ; He I lines
 	endif else begin
 		X_lines  = [399.29 , 399.35 , 399.57, 396.20  , 396.89  , 399.7   , 401.38  , 401.493 , $
-            	402.478 , 402.533 , 402.6, 402.7,407.88  , 408.06  , 408.82  ,409.55 , 410.6 , 750.0 , 750.9, 751.99,409.87,410.47]
+            	402.478 , 402.533 , 402.6, 402.7,407.88  , 408.06  , 408.82  ,409.55 , 410.6 , 750.0 , 750.9, 751.99,409.87,410.47, 395.42]
 		X_ions   = strarr(n_elements(X_lines))+'xx'
 		X_trn    = strarr(n_elements(X_lines))+'xxxx'
 		X_cpl    = strarr(n_elements(X_lines))+0.0
@@ -87,7 +87,7 @@ endif else begin
 	id = where(species eq 'He')
 	if id[0] ne -1 then begin	
 		X_lines  = [396.472  ,402.62, 399.29 , 399.35 , 399.57, 396.20  , 396.89  , 399.7   , 401.38  , 401.493 , $
-            	402.478 , 402.533 , 407.88  , 408.06  , 408.82  ,409.57 , 410.6 , 750.0 , 750.9, 751.99,409.83,410.45]
+            	402.478 , 402.533 , 407.88  , 408.06  , 408.82  ,409.57 , 410.6 , 750.0 , 750.9, 751.99,409.83,410.45, 395.42]
 		X_ions   = strarr(n_elements(X_lines))+'xx'
 		X_trn    = strarr(n_elements(X_lines))+'xxxx'
 		X_cpl    = strarr(n_elements(X_lines))+0.0
@@ -98,7 +98,7 @@ endif else begin
 		X_trn[0:1]  = ['4p2s'  ,'4p2s'] ; He I lines
 	endif else begin
 		X_lines  = [399.29 , 399.35 , 399.57, 396.20  , 396.89  , 399.7   , 401.38  , 401.493 , $
-            	402.478 , 402.533 , 407.88  , 408.06  , 408.82  ,409.57 , 410.6 , 750.0 , 750.9, 751.99,409.83,410.45]
+            	402.478 , 402.533 , 407.88  , 408.06  , 408.82  ,409.57 , 410.6 , 750.0 , 750.9, 751.99,409.83,410.45, 395.42]
 		X_ions   = strarr(n_elements(X_lines))+'xx'
 		X_trn    = strarr(n_elements(X_lines))+'xxxx'
 		X_cpl    = strarr(n_elements(X_lines))+0.0

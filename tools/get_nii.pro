@@ -100,14 +100,14 @@ if keyword_set(aug)then begin
     time_tdiv  = x[id]
     tdiv       = interpol(smooth(output_tdiv,40,/edge_truncate),time_tdiv,time)
 endif else begin
-    tdiv = -1 + fltarr(n_elements(time))
+    tdiv = retrieve_ratio(nii4041,output.los_names,shot)
 end
 jet =1 
 if keyword_set(jet)then begin
     los_names = 'SP' + strcompress(string(indgen(22)+1,format='(i2)'),/remove)
-    rvals     = [2.52331,	 2.54117,      2.55904,	   2.57690,	2.59476,      2.61263,	  2.63049,      2.64836,$
-    2.66622,	 2.68408,      2.70195,	   2.71981,	2.73767,      2.75554,	  2.77340,      2.79127,$
-    2.80913,	 2.82699,      2.84486,	   2.86272,	2.88059,      2.89845]
+    data = agm_readspec(shot,spec='kt3b')
+    agm_process_data,data,/wavecal,/radcal,/calibrate,/cal_si
+    rvals = data.data.coord
     istore    = -1
     for i=0,n_elements(output.los_names)-1 do begin
     	id = where(strpos(output.los_names,los_names[i]) ne -1 and strlen(output.los_names) eq strlen(los_names[i]))	
@@ -133,6 +133,7 @@ return,{ rawnii3995:rawnii3995,$
          nii4026_err:nii4026_err,$
 	 tdiv:tdiv,$
 	 rvals:rvals,$
+	 los_names:output.los_names,$
 	 rawtime:rawtime,$
 	 time:time}
 End

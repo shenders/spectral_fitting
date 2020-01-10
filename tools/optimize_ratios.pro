@@ -45,7 +45,7 @@ Function calc_profiles, data, dens_arr, te_arr, ratio1, ratio2, exp_ratio1, exp_
 		te        : te         }
 end
 
-Function optimize_ratios,data,shot,los,transmission,sm=sm,debug=debug
+Function optimize_ratios,data,shot,los,transmission,sm=sm,debug=debug,nocn=nocn
 
 	num      = 40
 	te_arr   = adas_vector(high=6,low=2.,num=num)
@@ -121,20 +121,22 @@ Function optimize_ratios,data,shot,los,transmission,sm=sm,debug=debug
 	endfor
 
 	; find line-integrated nii
-        cn_1 = calc_cn(shot,los,transmission,te_lower,dens_lower,data,sm,err=err_1,/jet)
-        cn_2 = calc_cn(shot,los,transmission,te_lower,dens_upper,data,sm,err=err_2,/jet)
-        cn_3 = calc_cn(shot,los,transmission,te_upper,dens_lower,data,sm,err=err_3,/jet)
-        cn_4 = calc_cn(shot,los,transmission,te_upper,dens_upper,data,sm,err=err_4,/jet)
-		
 	cn_lower = exp_ratio1
 	cn_upper = exp_ratio1
 
-	for k=0,n_elements(exp_ratio1[0,*])-1 do begin
-	    for i=0,n_elements(data.time)-1 do begin
-		cn_lower[i,k] = (cn_1[i,k])<(cn_2[i,k])<(cn_3[i,k])<(cn_4[i,k])
-		cn_upper[i,k] = (cn_1[i,k])>(cn_2[i,k])>(cn_3[i,k])>(cn_4[i,k])
+        if ~keyword_set(nocn)then begin
+    	    cn_1 = calc_cn(shot,los,transmission,te_lower,dens_lower,data,sm,err=err_1,/jet)
+            cn_2 = calc_cn(shot,los,transmission,te_lower,dens_upper,data,sm,err=err_2,/jet)
+            cn_3 = calc_cn(shot,los,transmission,te_upper,dens_lower,data,sm,err=err_3,/jet)
+            cn_4 = calc_cn(shot,los,transmission,te_upper,dens_upper,data,sm,err=err_4,/jet)
+	    for k=0,n_elements(exp_ratio1[0,*])-1 do begin
+	    	for i=0,n_elements(data.time)-1 do begin
+		    cn_lower[i,k] = (cn_1[i,k])<(cn_2[i,k])<(cn_3[i,k])<(cn_4[i,k])
+		    cn_upper[i,k] = (cn_1[i,k])>(cn_2[i,k])>(cn_3[i,k])>(cn_4[i,k])
+	    	endfor
 	    endfor
-	endfor
+	endif 
+	
 	return,{ratio1_upper:ratio1_upper,$
 		ratio2_upper:ratio2_upper,$
 		ratio1_lower:ratio1_lower,$

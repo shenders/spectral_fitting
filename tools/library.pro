@@ -63,6 +63,12 @@ end
     
 
 
+Pro load_jet_paths
+    !PATH=!PATH + ':' + $
+    expand_path( '+~cxs/utilities' ) + ':' + $
+    expand_path( '+~cxs/calibration' ) + ':' + $
+    expand_path( '+~cxs/instrument_data' )
+End
 Function graphpos,xidx,yidx,rows,cols,xspc=xspc,yspc=yspc,xlim=xlim,ylim=ylim
 
     if ~keyword_set(xlim)then xlim = [0.1,0.9]
@@ -98,12 +104,19 @@ Pro legend,text,col,yshift=yshift,xshift=xshift,ylog=ylog,xlog=xlog
 
 End
 Function calc_cn,shot,los,transmission,te,dens,data,sm,err=err_1,jet=jet
-    	
+
 	cn = data.nii3995
 	for i=0,n_elements(cn[0,*])-1 do begin
-    	    atomdb,te[*,i],dens[*,i],tec3995=tec3995
-	    dl = 0.07
-	    cn[*,i] = smooth(data.nii3995[*,i],sm,/edge_truncate) * 4.0 * !pi * transmission /( tec3995 * dens[*,i] ) / (dens[*,i] * 1e6) / dl
+    	    id_nan = where(finite(dens[*,i]) eq 0)
+	    if id_nan[0] eq -1 then begin
+	    	atomdb,te[*,i],dens[*,i],tec3995=tec3995
+	    	if keyword_set(jet)then begin
+    		    dl = jet_length(data.tdiv,data.los_names[i],upperdl=upperdl,lowerdl=lowerdl,doplot=doplot,psplot=psplot)
+	    	endif else begin
+	    	    dl = length(data.tdiv,shot,los,upperdl=upperdl,lowerdl=lowerdl)
+		end
+		cn[*,i] = smooth(data.nii3995[*,i],sm,/edge_truncate) * 4.0 * !pi * transmission /( tec3995 * dens[*,i] ) / (dens[*,i] * 1e6) / dl
+	    endif else cn[*,i]=-1
 	endfor
 	return,cn
 	
@@ -425,7 +438,6 @@ FUNCTION cal_wav,x,y,shot,diag,spec
 	    plot,x,wcal
 	    wcal_file='tmp/wcal'+DIAG+STRING(shot,format='(I5)')+'.sav'
 	    save,file=wcal_file,wcal
-	    STOP
 return,wcal
 END	    
 FUNCTION find_elm,shot,tline,emiss,psplot=psplot,plot_stats=plot_stats,binsize=binsize,experiment=experiment,trange=trange

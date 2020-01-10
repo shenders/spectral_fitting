@@ -47,8 +47,8 @@ Function get_kt3,pulse,debug=debug,spec=spec,rrange=rrange,psplot=psplot,sig=sig
     end
     for i=0,n_elements(los)-1 do print,los(i),rval(i)
     if keyword_set(debug)then begin
-    	if keyword_set(psplot)then makeps,file='kt3_geom.ps',xs=8,ys=5
-	window,/free
+    	;psplot=1
+	if keyword_set(psplot)then makeps,file='kt3_geom.ps',xs=8,ys=5 else window,/free
 	plot,xwl,ywl,xr=[2.26,3.06],xs=1,yr=[-1.75,-1.3],ys=1,/iso
 	
 	if keyword_set(rrange)then begin
@@ -60,6 +60,7 @@ Function get_kt3,pulse,debug=debug,spec=spec,rrange=rrange,psplot=psplot,sig=sig
 	    	    	    [data.data.geo.origin[1],data.data.geo.origin[1]+6*data.data.geo.vector[1,i]]
 	
 	endelse
+	stop
     endif
     strc = {phflx    : emis , $
     	    lamgrid  : wave , $

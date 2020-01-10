@@ -41,6 +41,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 ;	************************************
 ;	**** Setup MDL file             ****
 ;	************************************
+	for i=100,128 do free_lun,i
 	GET_LUN,unit_write & IF KEYWORD_SET(mdlfile)THEN mdl_file=mdlfile ELSE mdl_file = 'tmp/default_model.mdl'
 	IF KEYWORD_SET(nowrite)THEN OPENW,unit_write,'temp.mdl' ELSE OPENW,unit_write,mdl_file
     	junk= ''
@@ -374,14 +375,14 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
     	endif else begin
 
 	    wave      = 395.58
-	    n_id      = where(strpos(parnames_full,'.pos') ne -1)
+	    n_id      = where(strpos(parnames_full,'.pos') ne -1 and strpos(parnames_full,'n2') ne -1)
 	    id_pos    = where(abs(parvals(n_id)-wave) eq min(abs(parvals(n_id)-wave)))
 	    str       = strmid(parnames_full[n_id[id_pos]],0,strpos(parnames_full[n_id[id_pos]],'.pos'))+'.area'
 	    n_395_int = parvals[where(parnames_full EQ str[0])]*maxy
 	    n_395_err = parvalserr[where(parnames_err EQ str[0])]*maxy
 	    	    
 	    wave      = 399.5
-	    n_id      = where(strpos(parnames_full,'.pos') ne -1)
+	    n_id      = where(strpos(parnames_full,'.pos') ne -1 and strpos(parnames_full,'n2') ne -1)
 	    id_pos    = where(abs(parvals(n_id)-wave) eq min(abs(parvals(n_id)-wave)))
 	    str       = strmid(parnames_full[n_id[id_pos]],0,strpos(parnames_full[n_id[id_pos]],'.pos'))+'.area'
 	    n_399_int = parvals[where(parnames_full EQ str[0])]*maxy
@@ -408,7 +409,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 	    wave      = [403.5,404.13,404.35,404.47,405.68] & n_404_int=0.0 
 	    cple      = [0    ,1     ,0     ,0     ,0     ] 
 	    for ii=0,n_elements(wave)-1 do begin
-	    	n_id      = where(strpos(parnames_full,'.pos') ne -1)
+	    	n_id      = where(strpos(parnames_full,'.pos') ne -1 and strpos(parnames_full,'n2') ne -1)
 	    	id_pos    = where(abs(parvals(n_id)-wave(ii)) eq min(abs(parvals(n_id)-wave(ii))))
 	    	str       = strmid(parnames_full[n_id[id_pos]],0,strpos(parnames_full[n_id[id_pos]],'.pos'))+'.area'
 	    	n_404_int = n_404_int+parvals[where(parnames_full EQ str[0])]*maxy
@@ -527,7 +528,7 @@ Function run_ffs_fit, x, spectrum,fixback=fixback,yerr=yerr,$
 		print,'N II line ratio details:'
 		print,'4041/3995: ',n_404_int/n_399_int
 		print,'4041/4026: ',n_404_int/n_402_int
-		
+		print,'395.5 nm:  ',n_395_int
 		IF nvoigt NE 0 THEN BEGIN
 		    PRINT,'Balmer Feature Details:'
 	    	    id_check=where(parnames_err EQ 'd.dens')
