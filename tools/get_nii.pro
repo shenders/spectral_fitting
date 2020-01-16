@@ -31,7 +31,8 @@ Function get_nii,shot,$
 		 no404=no404,$
 		 use_rov8=use_rov8,$
 		 dynamic=dynamic,$
-		 preset=preset,jet=jet,aug=aug
+		 preset=preset,jet=jet,aug=aug,$
+		 horizontal=horizontal
 
 shotstr  = string(shot,format='(i5)') 
 if ~keyword_set(append)then append='data'
@@ -41,7 +42,7 @@ if ~keyword_set(sig3995)then sig3995='N_1_3995'
 if ~keyword_set(sig4041)then sig4041='N_1_4041' 
 if ~keyword_Set(channel)then channel=22
 if ~keyword_set(trace)then trace='save/'+shotstr+'/'+los+'-'+append+'.idl'
-if ~keyword_set(aug)and ~keyword_set(jet)then aug=1
+if ~keyword_set(aug)and ~keyword_set(jet)then jet=1
 
 if ~keyword_set(use_evl)then begin
 	restore,trace[0]
@@ -119,10 +120,10 @@ if keyword_set(aug)then begin
     time_tdiv  = x[id]
     tdiv       = interpol(smooth(output_tdiv,40,/edge_truncate),time_tdiv,time)
 endif else begin
-    tdiv = retrieve_ratio(nii4041,output.los_names,shot)
+    tdiv = retrieve_ratio(data=output,horizontal=horizontal)
 end
 
-if keyword_set(jet)then retrieve_rval,output,rvals else rvals=-1 
+if keyword_set(aug) then rvals=-1 else rvals = output.rvals
 
 if keyword_set(use_evl)then begin
 	los_names = los

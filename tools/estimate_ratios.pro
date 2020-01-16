@@ -1,6 +1,7 @@
 Function estimate_ratios,data,shot,los,transmission,$
                          sm=sm,full=full,debug=debug,$
-			 lowerte=lowerte,upperte=upperte
+			 lowerte=lowerte,upperte=upperte,$
+			 jet=jet,horizontal=horizontal
 
 	
 	num      = 40
@@ -47,8 +48,8 @@ Function estimate_ratios,data,shot,los,transmission,$
 	ratio2_lower = tec4041/tec4026
 
 	; find concentration
-        cn_lower = calc_cn(shot,los,transmission,te_lower,dens_upper,data,sm)
-        cn_upper = calc_cn(shot,los,transmission,te_upper,dens_lower,data,sm)
+        cn_lower = calc_cn(shot,los,transmission,te_lower,dens_upper,data,sm,jet=jet,horizontal=horizontal)
+        cn_upper = calc_cn(shot,los,transmission,te_upper,dens_lower,data,sm,jet=jet,horizontal=horizontal)
 	
 	return,{ratio1_upper:ratio1_upper,$
 		ratio2_upper:ratio2_upper,$

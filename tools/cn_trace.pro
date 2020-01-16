@@ -7,15 +7,20 @@ Pro cn_trace,shot,$
 	     channel=channel,$
 	     interelm=interelm,$
 	     transmission=transmission,$
-	     full=full,$
+	     estimate=estimate,$
 	     sm=sm,$
 	     load=load,$
-	     machine=machine
+	     machine=machine,$
+	     horizontal=horizontal
 
 	if ~keyword_set(transmission)then transmission=1.0
 	if ~keyword_set(sm)then sm=20.0
 	if ~keyword_set(machine)then machine='AUG'
-    	
+	if ~keyword_set(los)then los='SP'
+    	if machine eq 'JET' then begin
+	    load_jet_paths
+	    jet = 1
+	endif
 	shotstr = string(shot,format='(I5)')
 	filename = 'save/'+shotstr+'/'+los+'get_cn.sav'
 
@@ -30,16 +35,18 @@ Pro cn_trace,shot,$
  		 channel=channel,$
 		 use_evl=use_evl,$
 		 append=append,$
-		 diag=diag)
+		 diag=diag,$
+	         horizontal=horizontal)
 		 
  
        	; get cn, Te and dens from line ratios
 
-            if keyword_set(full)then begin
-		plasma = optimize_ratios(data,shot,los,transmission,sm=sm,debug=debug)
+            if ~keyword_set(estimate)then begin
+		plasma = optimize_ratios(data,shot,los,transmission,sm=sm,debug=debug,jet=jet,horizontal=horizontal)
        	    endif else begin
-	       	plasma = estimate_ratios(data,shot,los,transmission,sm=sm,debug=debug,lowerte=3.1,upperte=3.5)
+	       	plasma = estimate_ratios(data,shot,los,transmission,sm=sm,debug=debug,lowerte=3.1,upperte=3.5,jet=jet,horizontal=horizontal)
        	    end
+	    save,file=filename,plasma,data
 	end
 	
 	if machine eq 'JET' then begin

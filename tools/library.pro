@@ -103,7 +103,7 @@ Pro legend,text,col,yshift=yshift,xshift=xshift,ylog=ylog,xlog=xlog
     	xyouts,x0,y0,text,col=col,charsize=1.4
 
 End
-Function calc_cn,shot,los,transmission,te,dens,data,sm,err=err_1,jet=jet
+Function calc_cn,shot,los,transmission,te,dens,data,sm,err=err_1,jet=jet,horizontal=horizontal
 
 	cn = data.nii3995
 	for i=0,n_elements(cn[0,*])-1 do begin
@@ -111,7 +111,7 @@ Function calc_cn,shot,los,transmission,te,dens,data,sm,err=err_1,jet=jet
 	    if id_nan[0] eq -1 then begin
 	    	atomdb,te[*,i],dens[*,i],tec3995=tec3995
 	    	if keyword_set(jet)then begin
-    		    dl = jet_length(data.tdiv,data.los_names[i],upperdl=upperdl,lowerdl=lowerdl,doplot=doplot,psplot=psplot)
+    		    dl = jet_length(data.tdiv,data.los_names[i],upperdl=upperdl,lowerdl=lowerdl,doplot=doplot,psplot=psplot,horizontal=horizontal)
 	    	endif else begin
 	    	    dl = length(data.tdiv,shot,los,upperdl=upperdl,lowerdl=lowerdl)
 		end

@@ -5,14 +5,16 @@ Function calc_profiles, data, dens_arr, te_arr, ratio1, ratio2, exp_ratio1, exp_
 	num        = n_elements(dens_arr)
 	idx        = fltarr(num)	
 	min2       = fltarr(num)
-	te         = fltarr(n_elements(exp_ratio1))
-	dens       = fltarr(n_elements(exp_ratio1))
-	sim_ratio1 = fltarr(n_elements(exp_ratio1))
-	sim_ratio2 = fltarr(n_elements(exp_ratio1))
-	for i=0,n_elements(exp_ratio1)-1 do begin
-		for j=0,num-1 do begin
-			min1   = abs((ratio1[*,j] - exp_ratio1[i])/exp_ratio1[i]) * $
-	         		 abs((ratio2[*,j] - exp_ratio2[i])/exp_ratio2[i])
+	te         = fltarr(n_elements(exp_ratio1[*,0]),n_elements(exp_ratio1[0,*]))
+	dens       = fltarr(n_elements(exp_ratio1[*,0]),n_elements(exp_ratio1[0,*]))
+	sim_ratio1 = fltarr(n_elements(exp_ratio1[*,0]),n_elements(exp_ratio1[0,*]))
+	sim_ratio2 = fltarr(n_elements(exp_ratio1[*,0]),n_elements(exp_ratio1[0,*]))
+	
+	for k=0,n_elements(exp_ratio1[0,*])-1 do begin
+	    for i=0,n_elements(exp_ratio1[*,0])-1 do begin
+	    	for j=0,num-1 do begin
+			min1   = abs((ratio1[*,j] - exp_ratio1[i,k])/exp_ratio1[i,k]) * $
+	         		 abs((ratio2[*,j] - exp_ratio2[i,k])/exp_ratio2[i,k])
 			idx[j] = where(min1 eq min(min1))
 			min2[j]= min1[idx[j]]
 		endfor
@@ -22,39 +24,40 @@ Function calc_profiles, data, dens_arr, te_arr, ratio1, ratio2, exp_ratio1, exp_
 		
 		order = sort(min2)
 		chi = fltarr(n_elements(order))
-		for k=0,n_elements(order)-1 do begin
-			chi[k] = (exp_ratio1[i] - ratio1[idx[order[k]],order[k]])^2/exp_ratio1[i]
-			chi[k] = chi[k] +  (exp_ratio2[i] - ratio2[idx[order[k]],order[k]])^2/exp_ratio2[i]
+		for l=0,n_elements(order)-1 do begin
+			chi[l] = (exp_ratio1[i,k] - ratio1[idx[order[k]],order[k]])^2/exp_ratio1[i,k]
+			chi[l] = chi[l] +  (exp_ratio2[i,k] - ratio2[idx[order[k]],order[k]])^2/exp_ratio2[i,k]
 		endfor
 		
 		idz = where(chi eq min(chi))
 		idy = order[idz[0]]
         	; check if reasonable solution found
-		sim_ratio1[i] = ratio1[idx[idy[0]],idy[0]]
-		sim_ratio2[i] = ratio2[idx[idy[0]],idy[0]]
+		sim_ratio1[i,k] = ratio1[idx[idy[0]],idy[0]]
+		sim_ratio2[i,k] = ratio2[idx[idy[0]],idy[0]]
 		
 		
-		if abs(sim_ratio1[i]-exp_ratio1[i])/exp_ratio1[i] lt tol and $
-		   abs(sim_ratio2[i]-exp_ratio2[i])/exp_ratio2[i] lt tol then begin
-			dens[i] = dens_arr[idx[idy[0]]]
-			te[i]   = te_arr[idy[0]]
+		if abs(sim_ratio1[i,k]-exp_ratio1[i,k])/exp_ratio1[i,k] lt tol and $
+		   abs(sim_ratio2[i,k]-exp_ratio2[i,k])/exp_ratio2[i,k] lt tol then begin
+			dens[i,k] = dens_arr[idx[idy[0]]]
+			te[i,k]   = te_arr[idy[0]]
 		endif else begin
-			dens[i]       = -1
-			te[i]         = -1	
-			sim_ratio1[i] = -1
-			sim_ratio2[i] = -1
+			dens[i,k]       = -1
+			te[i,k]         = -1	
+			sim_ratio1[i,k] = -1
+			sim_ratio2[i,k] = -1
 		end
-	endfor
-	id = where(dens ne -1,complement=iy)
-	if id[0] ne -1 then begin
-		te[iy]   = interpol(te[id],data.time[id],data.time[iy])
-		dens[iy] = interpol(dens[id],data.time[id],data.time[iy])
-		sim_ratio1[iy] = interpol(sim_ratio1[id],data.time[id],data.time[iy])
-		sim_ratio2[iy] = interpol(sim_ratio2[id],data.time[id],data.time[iy])
-	endif else begin
+	    endfor
+	    id = where(dens[*,k] ne -1,complement=iy)
+	    if id[0] ne -1 then begin
+		te[iy,k]   = interpol(te[id,k],data.time[id],data.time[iy])
+		dens[iy,k] = interpol(dens[id,k],data.time[id],data.time[iy])
+		sim_ratio1[iy,k] = interpol(sim_ratio1[id,k],data.time[id],data.time[iy])
+		sim_ratio2[iy,k] = interpol(sim_ratio2[id,k],data.time[id],data.time[iy])
+	    endif else begin
 		print,'Warning: All values eq -1'		
 		stop
-	end	
+	    end	
+	endfor
 
 	return,{sim_ratio1: sim_ratio1,$
         	sim_ratio2: sim_ratio2,$
@@ -62,13 +65,8 @@ Function calc_profiles, data, dens_arr, te_arr, ratio1, ratio2, exp_ratio1, exp_
 		te        : te         }
 end
 
-Function optimize_ratios,data,shot,los,transmission,sm=sm,debug=debug,nocn=nocn,jet=jet
+Function optimize_ratios,data,shot,los,transmission,sm=sm,debug=debug,nocn=nocn,jet=jet,horizontal=horizontal
 
-	num      = 40
-	te_arr   = adas_vector(high=6,low=1.,num=num)
-	dens_arr = adas_vector(high=1e15,low=1e13,num=num)
-	ratio1   = fltarr(num,num)
-	ratio2   = fltarr(num,num)
 	exp_ratio1 = data.nii4041
 	exp_ratio2 = data.nii4041
 	err_ratio1 = data.nii4041
@@ -92,14 +90,21 @@ Function optimize_ratios,data,shot,los,transmission,sm=sm,debug=debug,nocn=nocn,
     	endfor
 
 	print,'Fetching atomic data...'
-	for i=0,num-1 do begin
+	if keyword_set(docalc) then begin
+	    num      = 40
+	    ratio1   = fltarr(num,num)
+	    ratio2   = fltarr(num,num)
+	    te_arr   = adas_vector(high=6,low=1.,num=num)
+	    dens_arr = adas_vector(high=1e15,low=1e13,num=num)
+    	    for i=0,num-1 do begin
 		atomdb,te_arr[i]+fltarr(num),dens_arr,$
 		               tec3995=tec3995,$
 		               tec4041=tec4041,$
 		               tec4026=tec4026
 		ratio1[*,i] = tec4041 / tec3995
 		ratio2[*,i] = tec4041 / tec4026
-	endfor
+	    endfor
+    	endif else restore,file='save/atomdb/ratios.sav'
 
 	; find best solution for 4 different cases
 
@@ -142,10 +147,10 @@ Function optimize_ratios,data,shot,los,transmission,sm=sm,debug=debug,nocn=nocn,
 	cn_upper = exp_ratio1
 
         if ~keyword_set(nocn)then begin
-    	    cn_1 = calc_cn(shot,los,transmission,te_lower,dens_lower,data,sm,err=err_1,jet=jet)
-            cn_2 = calc_cn(shot,los,transmission,te_lower,dens_upper,data,sm,err=err_2,jet=jet)
-            cn_3 = calc_cn(shot,los,transmission,te_upper,dens_lower,data,sm,err=err_3,jet=jet)
-            cn_4 = calc_cn(shot,los,transmission,te_upper,dens_upper,data,sm,err=err_4,jet=jet)
+    	    cn_1 = calc_cn(shot,los,transmission,te_lower,dens_lower,data,sm,err=err_1,jet=jet,horizontal=horizontal)
+            cn_2 = calc_cn(shot,los,transmission,te_lower,dens_upper,data,sm,err=err_2,jet=jet,horizontal=horizontal)
+            cn_3 = calc_cn(shot,los,transmission,te_upper,dens_lower,data,sm,err=err_3,jet=jet,horizontal=horizontal)
+            cn_4 = calc_cn(shot,los,transmission,te_upper,dens_upper,data,sm,err=err_4,jet=jet,horizontal=horizontal)
 	    for k=0,n_elements(exp_ratio1[0,*])-1 do begin
 	    	for i=0,n_elements(data.time)-1 do begin
 		    cn_lower[i,k] = (cn_1[i,k])<(cn_2[i,k])<(cn_3[i,k])<(cn_4[i,k])
