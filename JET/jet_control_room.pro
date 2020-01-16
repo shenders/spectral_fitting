@@ -46,7 +46,7 @@ PRO jet_control_room,pulse,tr=tr,average=average
     	ppfread,shot=shot,dda='GASM',dtype='MAJR',data=data,t=t & plot,t,data/1e21,col=colors.black,back=colors.white,xtit='Time [s]',ytit='Gas valve, cZ [10!u21!n #/s, %]',/nodata,xr=tr,xs=1 & oplot,t,data/1e21,col=colors.red
     	ppfread,shot=shot,dda='GASM',dtype='MN1R',data=data2,t=t2 & oplot,t2,data2/1e21,col=colors.blue
     	cn = (interpol(data2/7,t2,t) / (data+interpol(data2/7,t2,t)))*100
-	oplot,t,cn,col=colors.black
+	;oplot,t,cn,col=colors.black
     	if keyword_set(average)then begin
 	    id=where(t ge average-0.2 and t le average+0.2)
 	    print,'Valve flux ratio (cN) [%]: ',mean(cn[id])

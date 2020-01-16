@@ -1,108 +1,59 @@
-Pro jet_profs,shot,dda=dda,tr=tr,xr=xr,shift=shift,$
-    	      tesep = tesep, nesep=nesep, err=err,$
+Pro jet_profs,shot,$
+    	      tesep = tesep,$
+	      nesep=nesep,$
+	      err=nesep_err,$
 	      debug=debug
+	      
+    if shot eq 96075 then seq = 182
+    if shot eq 85417 then seq = 842
+    if shot eq 85264 then seq = 391
+    if shot eq 85265 then seq = 419
+    if shot eq 85266 then seq = 902
+    if shot eq 85267 then seq = 1061
+    if shot eq 85268 then seq = 413
 
-    if ~keyword_set(shift)then begin
-    	shift = 0.02
-	if shot eq 85262 then shift = 0.023
-	if shot eq 85264 then shift = 0.026
-	if shot eq 85265 then shift = 0.026
-	if shot eq 85266 then shift = 0.027
-	if shot eq 85267 then shift = 0.027
-	if shot eq 85268 then shift = 0.027
-	if shot eq 85270 then shift = 0.027
-	if shot eq 85272 then shift = 0.025
-	if shot eq 85274 then shift = 0.025
-	if shot eq 85276 then shift = 0.026
-	if shot eq 96075 then shift = 0.0475
-	if shot eq 85423 then shift = 0.0395
-	if shot eq 85417 then shift = 0.041
-	if shot eq 96227 then begin
-	    shift = 0.030
-	    dda = 'EFTP'
-	endif
+    if shot eq 85270 then seq = 467
+    if shot eq 85272 then seq = 482
+    if shot eq 85274 then seq = 1128
+    if shot eq 85276 then seq = 445
+    if shot eq 85423 then seq = 455
+    if shot eq 96227 then seq = 261
+
+        lims = [0.99,1.01]
+    
+    ppfread,shot=shot,dda='PED',dtype='TEFP',ppfuid='shenders',seq=seq,data=data,x=x    
+    te_vals = interpol(data,x,findgen(10)*(lims[1]-lims[0])/9.0+lims[0])
+    stats = moment(te_vals)
+    tesep = stats[0]
+    tesep_err = sqrt(stats[1])
+    if keyword_set(debug)then begin
+    	setgraphics,colors=colors 	
+    	plot,x,data,xr=[0.8,1.2],/nodata,back=colors.white,col=colors.black,ys=9
+	oplot,x,data,col=colors.black
+	oplot,[0,2],[100,100],col=colors.black,linest=5
     endif
+    ppfread,shot=shot,dda='PED',dtype='NEFP',ppfuid='shenders',seq=seq,data=data,x=x    
+    ne_vals = interpol(data/1e19,x,findgen(10)*(lims[1]-lims[0])/9.0+lims[0])
+    stats = moment(ne_vals)
+    nesep = stats[0]
+    nesep_err = 1.0/sqrt(n_elements(ne_vals)) * sqrt(stats[1])
     
-    if ~keyword_set(tr)then tr=[40,60]
-    if ~keyword_set(xr)then xr=[0,1.1]
-
-    ; read in equilibrium
-    if ~keyword_set(dda)then dda='EFIT'
-    ppfread,shot=shot,dda=dda,dtype='PSI',data=psirz,t=time,x=rad
-    ppfread,shot=shot,dda=dda,dtype='PSIR',data=psir
-    ppfread,shot=shot,dda=dda,dtype='PSIZ',data=psiz
-    ppfread,shot=shot,dda=dda,dtype='RMAG',data=rmag,t=t1
-    ppfread,shot=shot,dda=dda,dtype='ZMAG',data=zmag,t=t2
-    ppfread,shot=shot,dda=dda,dtype='FAXS',data=axes,t=t3
-    ppfread,shot=shot,dda=dda,dtype='FBND',data=bndy,t=t4
-    nr  = n_elements(psir)
-    nz  = n_elements(psiz)
-    nt  = n_elements(time)
-    psi = fltarr(nr,nz,nt)
-    for t=0,nt-1 do begin
-        for i=0,n_elements(psiz)-1 do begin
-    		psi[*,i,t] = psirz[i*nr:(i+1)*nr-1,t]
-    	endfor
-    endfor
-    
-    midplane = fltarr(nt)
-    psin     = fltarr(nr,nt)
-    for t=0,nt-1 do begin
-    	midplane  = where(abs(psiz-zmag[t]) eq min(abs(psiz-zmag[t])))
-        psin[*,t] = (psi[*,midplane,t] - axes[t])/(bndy[t] - axes[t])
-    endfor 
-    
-    ; read in temperature
-    ppfread,shot=shot,dda='HRTS',dtype='TE',data=temp,t=t,x=rad
-
-    ; read in density
-    ppfread,shot=shot,dda='HRTS',dtype='NE',data=dens,t=t,x=rad
-    
-    if keyword_set(shift)then rad = rad + shift
-
-    ; convert to psiN
-    psi_hrts = fltarr(n_elements(rad),n_elements(t))
-    for i=0,n_elements(t)-1 do begin
-    	id = where(abs(time-t[i]) eq min(abs(time-t[i])))
-    	psi_hrts[*,i] = interpol(psin[*,id[0]],psir,rad)
-    endfor
-    
-    if keyword_set(debug)then setgraphics,nrow=2,ncol=1,xs=800,ys=800,colors=colors
-    lims = [0.99,1.01]
-    id = where(t ge tr[0] and t le tr[1])
-    ne_mean = fltarr(n_elements(id))
-    te_mean = fltarr(n_elements(id))
-    if keyword_set(debug)then plot,psi_hrts[*,0],temp[*,0],/nodata,col=colors.black,back=colors.white,xr=xr,yr=[0,1500],xs=1,$
-    xtitle='Psi!lN!n',ytitle='T!le!n [eV]',title=string(shot,format='("JPN #",i5)')
-    for i=min(id),max(id) do begin
-    	if keyword_set(debug)then oplot,psi_hrts[*,i],temp[*,i],col=colors.black
-	vals = interpol(temp[*,i],psi_hrts[*,i],findgen(10)*(lims[1]-lims[0])/9.0+lims[0])
-	stat = moment(vals)
-    	te_mean[i-min(id)]=stat[0]
-    endfor
-    if keyword_set(debug)then oplot,[0,100],[mean(te_mean),mean(te_mean)],col=colors.red,linest=5
-    if keyword_set(debug)then oplot,[0,100],[100,100],col=colors.green,linest=5
-    if keyword_set(debug)then oplot,[1,1],[0,100000],col=colors.red,linest=5
-    if keyword_set(debug)then plot,psi_hrts[*,0],dens[*,0],/nodata,col=colors.black,back=colors.white,xr=xr,yr=[0,10],xs=1,$
-    xtitle='Psi!lN!n',ytitle='n!le!n [10!u19!nm!u-3!n]'
-    for i=min(id),max(id) do begin
-    	if keyword_set(debug)then oplot,psi_hrts[*,i],dens[*,i]/1e19,col=colors.black
-	vals = interpol(dens[*,i]/1e19,psi_hrts[*,i],findgen(10)*(lims[1]-lims[0])/9.0+lims[0])
-	stat = moment(vals)
-    	ne_mean[i-min(id)]=stat[0]
-    endfor
-    
-    if keyword_set(debug)then oplot,[0,100],[mean(ne_mean),mean(ne_mean)],col=colors.red,linest=5
-    if keyword_set(debug)then oplot,[1,1],[0,100000],col=colors.red,linest=5
-    if keyword_set(debug)then print,'Average Te [eV]        = ',mean(te_mean)
-    if keyword_set(debug)then print,'Average ne [10^19 m-3] = ',mean(ne_mean)
-    
-    
-    tesep = mean(te_mean)
-    nesep = mean(ne_mean)
-    
-    ; Use standard error of mean
-    
-    err   = (1.0/sqrt(n_elements(ne_mean)))* sqrt((moment(ne_mean))[1])
-
+    if keyword_set(debug)then begin 	
+    	print,nesep
+    	print,tesep
+    	axis,yaxis=1,/save,yr=[0,max(data)],col=colors.blue
+	oplot,x,data,col=colors.blue
+    stop
+    endif
 end
+
+
+
+
+
+
+
+
+
+
+

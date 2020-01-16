@@ -49,6 +49,7 @@ Pro cn_trace,shot,$
 	    dens2d = plasma.cn_upper
 	    temp2d = plasma.cn_upper
 	    conc2d = plasma.cn_upper
+    	    emiss2d = transpose(data.nii4041)/1e18	    
 	    for i=0,n_elements(plasma.cn_upper[0,*])-1 do begin
 	    	for j=0,n_elements(plasma.cn_upper[*,0])-1 do begin
 		    dens2d[j,i]=(plasma.dens_upper[j,i]+plasma.dens_lower[j,i])/2.0
@@ -65,7 +66,7 @@ Pro cn_trace,shot,$
 	    for i=0,n_elements(time)-1 do begin stat=moment(conc2d[id_range,i]) & cn_mean[i] = stat[0] & cn_err[i]=sqrt(stat[1]) & endfor
 	    for i=0,n_elements(time)-1 do begin stat=moment(dens2d[id_range,i]) & dens[i] = stat[0] & ne_err[i]=sqrt(stat[1]) & endfor
 	    for i=0,n_elements(time)-1 do begin stat=moment(temp2d[id_range,i]) & temp[i] = stat[0] & te_err[i]=sqrt(stat[1]) & endfor
-	
+	    
 	endif else begin
 	    
 	    time = data.time

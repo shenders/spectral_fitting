@@ -1,4 +1,4 @@
-Pro combine_stark,shot,tr=tr,los=los,load=load,rescale=rescale,calwave=calwave
+Pro combine_stark,shot,tr=tr,los=los,load=load,calwave=calwave
     
     if ~keyword_set(los)then los='SP'
     if ~keyword_set(load)then save=1
@@ -9,15 +9,13 @@ Pro combine_stark,shot,tr=tr,los=los,load=load,rescale=rescale,calwave=calwave
     y.nii[*,*,3]     = x.nii[*,*,3]
     y.nii_err[*,*,3] = x.nii_err[*,*,3]
     
-    if keyword_set(rescale)then begin
-    	; first store saturated 399.5nm line as array 4
-    	y.nii[*,*,4]     = y.nii[*,*,0]
-    	y.nii_err[*,*,4] = y.nii_err[*,*,0]
-    	; use branching ratio of 395.5 line to set 399.5 line
-    	branching_ratio  = 1.0/0.0922
-	y.nii[*,*,0]     = x.nii[*,*,3] * branching_ratio
-    	y.nii_err[*,*,0] = x.nii_err[*,*,3] * branching_ratio
-    endif
+    ; first store saturated 399.5nm line as array 4
+    y.nii[*,*,4]     = y.nii[*,*,0]
+    y.nii_err[*,*,4] = y.nii_err[*,*,0]
+    ; use branching ratio of 395.5 line to set 399.5 line
+    branching_ratio  = 1.0/0.0922
+    y.nii[*,*,0]     = x.nii[*,*,3] * branching_ratio
+    y.nii_err[*,*,0] = x.nii_err[*,*,3] * branching_ratio
     
     y.dens_balmer    = x.dens_balmer
     y.dens_balmer_err= x.dens_balmer_err
